@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import type { Cycle, Category, Transaction, Budget, MerchantRule, CycleMetrics, BudgetCategoryMetric, RecurrenceFrequency, RecurringTransaction } from '@/types/finance';
-import { differenceInDays, parseISO, format, addMonths, addWeeks, setDate, setDay, isAfter, isBefore, startOfDay } from 'date-fns';
+import { differenceInDays, parseISO, format, addMonths, addWeeks, setDate, setDay, isAfter, isBefore, startOfDay, startOfMonth } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 const TIMEZONE = 'Australia/Sydney';
@@ -25,17 +25,27 @@ export function getOccurrencesInCycleRange(
   };
 
   if (recurring.frequency === 'monthly' && recurring.day_of_month !== null) {
-    while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
-      const targetDate = setDate(current, recurring.day_of_month);
-      if (
-        (isAfter(targetDate, rangeStart) || format(targetDate, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) &&
-        (isBefore(targetDate, rangeEnd) || format(targetDate, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) &&
-        !shouldExclude(targetDate)
-      ) {
-        dates.push(targetDate);
+    // Iterate month-by-month so cycles that start mid-month still include early-month occurrences
+    let monthCursor = startOfMonth(rangeStart);
+    const endMonth = startOfMonth(rangeEnd);
+
+    while (isBefore(monthCursor, endMonth) || format(monthCursor, 'yyyy-MM') === format(endMonth, 'yyyy-MM')) {
+      const targetDate = setDate(monthCursor, recurring.day_of_month);
+
+      // Guard: if the day doesn't exist in this month (e.g. 31st in Feb), setDate rolls into next month.
+      // In that case, skip this month.
+      if (format(targetDate, 'yyyy-MM') === format(monthCursor, 'yyyy-MM')) {
+        if (
+          (isAfter(targetDate, rangeStart) || format(targetDate, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) &&
+          (isBefore(targetDate, rangeEnd) || format(targetDate, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) &&
+          !shouldExclude(targetDate)
+        ) {
+          dates.push(targetDate);
+        }
       }
-      current = addMonths(current, 1);
-      if (dates.length > 10) break;
+
+      monthCursor = addMonths(monthCursor, 1);
+      if (dates.length > 24) break;
     }
   } else if (recurring.frequency === 'weekly' && recurring.day_of_week !== null) {
     current = setDay(current, recurring.day_of_week, { weekStartsOn: 0 });
