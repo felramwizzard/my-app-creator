@@ -13,6 +13,7 @@ import ImportPage from "./pages/ImportPage";
 import FinanceSettingsPage from "./pages/FinanceSettingsPage";
 import MerchantRulesPage from "./pages/MerchantRulesPage";
 import FinanceCalendarPage from "./pages/FinanceCalendarPage";
+import RecurringTransactionsPage from "./pages/RecurringTransactionsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/settings" element={<FinanceSettingsPage />} />
           <Route path="/merchant-rules" element={<MerchantRulesPage />} />
           <Route path="/calendar" element={<FinanceCalendarPage />} />
+          <Route path="/recurring" element={<RecurringTransactionsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

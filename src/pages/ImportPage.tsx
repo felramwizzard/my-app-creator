@@ -150,7 +150,9 @@ export default function ImportPage() {
           method: 'csv',
           notes: null,
           split_group_id: null,
-          import_hash: hash
+          import_hash: hash,
+          is_planned: false,
+          recurring_transaction_id: null
         });
         imported++;
       }

@@ -204,6 +204,59 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_transactions: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          day_of_month: number | null
+          day_of_week: number | null
+          frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          day_of_month?: number | null
+          day_of_week?: number | null
+          frequency: Database["public"]["Enums"]["recurrence_frequency"]
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          day_of_month?: number | null
+          day_of_week?: number | null
+          frequency?: Database["public"]["Enums"]["recurrence_frequency"]
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -214,9 +267,11 @@ export type Database = {
           description: string
           id: string
           import_hash: string | null
+          is_planned: boolean
           merchant: string | null
           method: Database["public"]["Enums"]["transaction_method"]
           notes: string | null
+          recurring_transaction_id: string | null
           split_group_id: string | null
           updated_at: string
           user_id: string
@@ -230,9 +285,11 @@ export type Database = {
           description: string
           id?: string
           import_hash?: string | null
+          is_planned?: boolean
           merchant?: string | null
           method?: Database["public"]["Enums"]["transaction_method"]
           notes?: string | null
+          recurring_transaction_id?: string | null
           split_group_id?: string | null
           updated_at?: string
           user_id: string
@@ -246,9 +303,11 @@ export type Database = {
           description?: string
           id?: string
           import_hash?: string | null
+          is_planned?: boolean
           merchant?: string | null
           method?: Database["public"]["Enums"]["transaction_method"]
           notes?: string | null
+          recurring_transaction_id?: string | null
           split_group_id?: string | null
           updated_at?: string
           user_id?: string
@@ -268,6 +327,13 @@ export type Database = {
             referencedRelation: "cycles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_recurring_transaction_id_fkey"
+            columns: ["recurring_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transactions"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -280,6 +346,7 @@ export type Database = {
     Enums: {
       category_type: "need" | "want" | "bucket"
       cycle_status: "open" | "closed"
+      recurrence_frequency: "weekly" | "fortnightly" | "monthly"
       transaction_method: "manual" | "csv" | "bank"
     }
     CompositeTypes: {
@@ -410,6 +477,7 @@ export const Constants = {
     Enums: {
       category_type: ["need", "want", "bucket"],
       cycle_status: ["open", "closed"],
+      recurrence_frequency: ["weekly", "fortnightly", "monthly"],
       transaction_method: ["manual", "csv", "bank"],
     },
   },
