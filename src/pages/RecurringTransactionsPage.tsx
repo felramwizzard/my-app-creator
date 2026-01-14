@@ -175,6 +175,18 @@ export default function RecurringTransactionsPage() {
     return `Every ${dayName}`;
   };
 
+  // Calculate total monthly equivalent of all active recurring transactions
+  const totalRecurringPerCycle = recurringTransactions
+    .filter(r => r.is_active)
+    .reduce((sum, r) => {
+      // Estimate occurrences per month based on frequency
+      let multiplier = 1;
+      if (r.frequency === 'weekly') multiplier = 4;
+      else if (r.frequency === 'fortnightly') multiplier = 2;
+      else multiplier = 1; // monthly
+      return sum + Math.abs(r.amount) * multiplier;
+    }, 0);
+
   return (
     <FinanceLayout>
       <div className="px-5 py-6 space-y-6">
@@ -186,6 +198,19 @@ export default function RecurringTransactionsPage() {
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
         </div>
+
+        {/* Total Summary Card */}
+        {recurringTransactions.length > 0 && (
+          <div className="glass-card rounded-xl p-4">
+            <p className="text-sm text-muted-foreground">Total recurring per cycle</p>
+            <p className="text-2xl font-display font-bold text-destructive">
+              -${totalRecurringPerCycle.toFixed(2)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {recurringTransactions.filter(r => r.is_active).length} active recurring expenses
+            </p>
+          </div>
+        )}
 
         {/* Generate Button */}
         {currentCycle && recurringTransactions.length > 0 && (
