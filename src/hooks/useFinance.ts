@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import type { Cycle, Category, Transaction, Budget, MerchantRule, CycleMetrics, BudgetCategoryMetric, RecurrenceFrequency } from '@/types/finance';
+import type { Cycle, Category, Transaction, Budget, MerchantRule, CycleMetrics, BudgetCategoryMetric, RecurrenceFrequency, RecurringTransaction } from '@/types/finance';
 import { differenceInDays, parseISO, format, addMonths, addWeeks, setDate, setDay, isAfter, isBefore, startOfDay } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
@@ -165,30 +165,64 @@ export function useFinance() {
     enabled: !!user?.id
   });
 
+  // Fetch recurring templates (used to reserve recurring expenses even if planned rows haven't been generated yet)
+  const recurringTransactionsQuery = useQuery({
+    queryKey: ['recurring_transactions', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('recurring_transactions')
+        .select('*')
+        .eq('user_id', user!.id)
+        .eq('is_active', true);
+
+      if (error) throw error;
+      return data as RecurringTransaction[];
+    },
+    enabled: !!user?.id
+  });
+
   // Compute metrics
-  const metrics: CycleMetrics | null = currentCycle && transactionsQuery.data && budgetsQuery.data ? (() => {
-    const transactions = transactionsQuery.data;
-    const budgets = budgetsQuery.data;
-    const categories = categoriesQuery.data ?? [];
+  const metrics: CycleMetrics | null =
+    currentCycle &&
+    transactionsQuery.data &&
+    budgetsQuery.data &&
+    recurringTransactionsQuery.data !== undefined
+      ? (() => {
+          const transactions = transactionsQuery.data;
+          const budgets = budgetsQuery.data;
+          const categories = categoriesQuery.data ?? [];
+          const recurringTemplates = recurringTransactionsQuery.data ?? [];
 
-    // Only count actual (non-planned) expenses for totalSpend
-    const actualTransactions = transactions.filter(t => !t.is_planned);
-    const plannedTransactions = transactions.filter(t => t.is_planned);
+          // Only count actual (non-planned) expenses for totalSpend
+          const actualTransactions = transactions.filter(t => !t.is_planned);
+          const plannedTransactions = transactions.filter(t => t.is_planned);
 
-    const totalSpend = actualTransactions
-      .filter(t => t.amount < 0)
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+          const totalSpend = actualTransactions
+            .filter(t => t.amount < 0)
+            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    const totalIncome = actualTransactions
-      .filter(t => t.amount > 0)
-      .reduce((sum, t) => sum + t.amount, 0);
+          const totalIncome = actualTransactions
+            .filter(t => t.amount > 0)
+            .reduce((sum, t) => sum + t.amount, 0);
 
-    // Calculate how much is committed (planned) but not yet paid
-    const plannedExpenses = plannedTransactions
-      .filter(t => t.amount < 0)
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+          // Planned recurring expenses:
+          // - Prefer explicit planned rows (is_planned=true) if they exist for this cycle
+          // - Otherwise compute from recurring templates (so "Safe to spend" works immediately after adding recurrings)
+          const plannedExpensesFromTransactions = plannedTransactions
+            .filter(t => t.amount < 0)
+            .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    const incomeActual = currentCycle.income_actual ?? currentCycle.income_planned;
+          const cycleStart = parseISO(currentCycle.start_date);
+          const cycleEnd = parseISO(currentCycle.end_date);
+          const plannedExpensesFromTemplates = recurringTemplates.reduce((sum, r) => {
+            const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd);
+            return sum + occurrences.length * Math.abs(Number(r.amount));
+          }, 0);
+
+          const plannedExpenses =
+            plannedTransactions.length > 0 ? plannedExpensesFromTransactions : plannedExpensesFromTemplates;
+
+          const incomeActual = currentCycle.income_actual ?? currentCycle.income_planned;
 
     // Base budget for the cycle (what you have to work with)
     const baseBudget = currentCycle.starting_balance + incomeActual;
