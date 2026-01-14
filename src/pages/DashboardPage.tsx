@@ -152,16 +152,16 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="text-xs text-muted-foreground space-y-1">
-            {metrics.plannedExpenses > 0 && (
-              <div className="flex items-center gap-2">
-                <Clock className="w-3 h-3" />
-                <span>${metrics.plannedExpenses.toLocaleString()} reserved for planned expenses</span>
-              </div>
-            )}
             <div className="flex items-center gap-2">
               <TrendingUp className="w-3 h-3" />
-              <span>${metrics.remainingToSpend.toLocaleString()} total discretionary ÷ 4 weekends</span>
+              <span>${metrics.remainingDiscretionary.toLocaleString()} left ÷ 4 weekends</span>
             </div>
+            {metrics.actualDiscretionarySpend > 0 && (
+              <div className="flex items-center gap-2 text-orange-500">
+                <Clock className="w-3 h-3" />
+                <span>${metrics.actualDiscretionarySpend.toLocaleString()} already spent on extras</span>
+              </div>
+            )}
           </div>
         </div>
 

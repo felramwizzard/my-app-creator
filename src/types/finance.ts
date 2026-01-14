@@ -107,6 +107,9 @@ export interface CycleMetrics {
   dailyBudget: number;
   budgetByCategory: BudgetCategoryMetric[];
   plannedExpenses: number;
+  totalDiscretionary: number;
+  actualDiscretionarySpend: number;
+  remainingDiscretionary: number;
 }
 
 export interface BudgetCategoryMetric {

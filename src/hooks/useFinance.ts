@@ -190,7 +190,23 @@ export function useFinance() {
 
     const incomeActual = currentCycle.income_actual ?? currentCycle.income_planned;
     
-    // Expected end balance considers ONLY actual transactions
+    // Total discretionary budget = starting balance + income - target savings - ALL planned recurring expenses
+    const totalDiscretionary = currentCycle.starting_balance + incomeActual - currentCycle.target_end_balance - plannedExpenses;
+    
+    // Actual discretionary spending (non-planned transactions that are expenses)
+    const actualDiscretionarySpend = actualTransactions
+      .filter(t => t.amount < 0)
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    
+    // What's left for remaining weekends = total discretionary - what we've already spent on discretionary items
+    const remainingDiscretionary = totalDiscretionary - actualDiscretionarySpend;
+    
+    // Safe to spend per weekend (always divide by 4 weekends in the cycle)
+    // This gives a consistent view: if you overspend, the number goes down for remaining weekends
+    const weekendsInCycle = 4;
+    const safeToSpendPerWeekend = remainingDiscretionary / weekendsInCycle;
+
+    // Expected end balance considers ONLY actual transactions (for tracking purposes)
     const expectedEndBalance = currentCycle.starting_balance + incomeActual + 
       actualTransactions.reduce((sum, t) => sum + t.amount, 0);
 
@@ -202,10 +218,6 @@ export function useFinance() {
 
     // Remaining to spend = what's left after considering target AND planned expenses
     const remainingAfterPlanned = expectedEndBalance - currentCycle.target_end_balance - plannedExpenses;
-    
-    // Safe to spend per weekend (4 weekends in a typical cycle)
-    const weekendsInCycle = 4;
-    const safeToSpendPerWeekend = remainingAfterPlanned / weekendsInCycle;
     
     // Keep daily budget for other uses
     const safeToSpend = daysRemaining > 0 ? remainingAfterPlanned / daysRemaining : 0;
@@ -239,7 +251,10 @@ export function useFinance() {
       daysRemaining,
       dailyBudget,
       budgetByCategory,
-      plannedExpenses
+      plannedExpenses,
+      totalDiscretionary,
+      actualDiscretionarySpend,
+      remainingDiscretionary
     };
   })() : null;
 
