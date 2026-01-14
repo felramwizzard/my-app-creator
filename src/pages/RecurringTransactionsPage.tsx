@@ -184,12 +184,10 @@ export default function RecurringTransactionsPage() {
           const cycleStart = parseISO(currentCycle.start_date);
           const cycleEnd = parseISO(currentCycle.end_date);
           const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd, paydayDate);
-          console.log(`${r.name}: ${occurrences.length} occ × $${r.amount} = $${occurrences.length * Math.abs(r.amount)}`, occurrences.map(d => d.toISOString().split('T')[0]));
           return sum + occurrences.length * Math.abs(r.amount);
         }, 0)
     : 0;
-  
-  console.log('TOTAL:', totalRecurringPerCycle);
+
 
   return (
     <FinanceLayout>
