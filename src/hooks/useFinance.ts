@@ -8,7 +8,7 @@ import { toZonedTime } from 'date-fns-tz';
 const TIMEZONE = 'Australia/Sydney';
 
 // Helper to get all occurrences of a recurring transaction within a date range
-function getOccurrencesInCycleRange(
+export function getOccurrencesInCycleRange(
   recurring: { frequency: RecurrenceFrequency; day_of_week: number | null; day_of_month: number | null },
   rangeStart: Date,
   rangeEnd: Date
