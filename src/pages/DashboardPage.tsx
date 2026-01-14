@@ -1,21 +1,25 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FinanceLayout } from "@/components/layout/FinanceLayout";
 import { MoneyDisplay } from "@/components/finance/MoneyDisplay";
 import { ProgressRing } from "@/components/finance/ProgressRing";
 import { BudgetCard } from "@/components/finance/BudgetCard";
 import { TransactionItem } from "@/components/finance/TransactionItem";
+import { TransactionDetailSheet } from "@/components/finance/TransactionDetailSheet";
 import { useFinance } from "@/hooks/useFinance";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO } from "date-fns";
-import { CalendarDays, TrendingUp, Target, ChevronRight } from "lucide-react";
+import { CalendarDays, TrendingUp, Target, ChevronRight, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import type { Transaction } from "@/types/finance";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { currentCycle, metrics, transactions, isLoading, hasFetchedCycles } = useFinance();
+  const { currentCycle, metrics, transactions, categories, isLoading, hasFetchedCycles, updateTransaction, deleteTransaction } = useFinance();
+  const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -30,6 +34,37 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, currentCycle, hasFetchedCycles, navigate]);
 
+  const handleMarkAsPaid = async (id: string) => {
+    try {
+      await updateTransaction.mutateAsync({ id, is_planned: false });
+      toast.success("Marked as paid!");
+    } catch (error) {
+      console.error("Error marking as paid:", error);
+      toast.error("Failed to update transaction");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTransaction.mutateAsync(id);
+      toast.success("Transaction deleted");
+      setDetailTransaction(null);
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      toast.error("Failed to delete transaction");
+    }
+  };
+
+  const handleUpdateCategory = async (transactionId: string, categoryId: string) => {
+    try {
+      await updateTransaction.mutateAsync({ id: transactionId, category_id: categoryId });
+      toast.success("Category updated");
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast.error("Failed to update category");
+    }
+  };
+
   if (authLoading || isLoading || !hasFetchedCycles || !currentCycle || !metrics) {
     return (
       <FinanceLayout>
@@ -43,9 +78,6 @@ export default function DashboardPage() {
   }
 
   const recentTransactions = transactions.slice(0, 5);
-  const cycleProgress = currentCycle.starting_balance > 0 
-    ? (metrics.totalSpend / currentCycle.starting_balance) * 100 
-    : 0;
 
   return (
     <FinanceLayout>
@@ -109,7 +141,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Safe to Spend */}
-        <div className="glass-card rounded-2xl p-4">
+        <div className="glass-card rounded-2xl p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-primary" />
@@ -119,6 +151,12 @@ export default function DashboardPage() {
               <MoneyDisplay amount={metrics.safeToSpend} size="lg" />
             </div>
           </div>
+          {metrics.plannedExpenses > 0 && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground pl-13">
+              <Clock className="w-3 h-3" />
+              <span>${metrics.plannedExpenses.toLocaleString()} in planned expenses reserved</span>
+            </div>
+          )}
         </div>
 
         {/* Budget Overview */}
@@ -152,7 +190,8 @@ export default function DashboardPage() {
                 <TransactionItem 
                   key={t.id} 
                   transaction={t}
-                  onClick={() => navigate(`/transactions/${t.id}`)}
+                  onClick={() => setDetailTransaction(t)}
+                  onMarkAsPaid={t.is_planned ? handleMarkAsPaid : undefined}
                 />
               ))}
             </div>
@@ -168,6 +207,17 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Transaction Detail Sheet */}
+      <TransactionDetailSheet
+        transaction={detailTransaction}
+        open={!!detailTransaction}
+        onOpenChange={(open) => !open && setDetailTransaction(null)}
+        categories={categories}
+        onUpdateCategory={handleUpdateCategory}
+        onMarkAsPaid={handleMarkAsPaid}
+        onDelete={handleDelete}
+      />
     </FinanceLayout>
   );
 }
