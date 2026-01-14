@@ -189,30 +189,33 @@ export function useFinance() {
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
     const incomeActual = currentCycle.income_actual ?? currentCycle.income_planned;
-    
-    // Total discretionary budget = starting balance + income - target savings - ALL planned recurring expenses
-    const totalDiscretionary = currentCycle.starting_balance + incomeActual - currentCycle.target_end_balance - plannedExpenses;
-    
-    // Actual discretionary spending (non-planned transactions that are expenses)
+
+    // Base budget for the cycle (what you have to work with)
+    const baseBudget = currentCycle.starting_balance + incomeActual;
+
+    // Net of actual transactions posted so far (includes unexpected expenses + any recorded income)
+    const actualNet = actualTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+    // Current balance = base budget + actual transactions (planned recurring items should NOT reduce this yet)
+    const currentBalance = baseBudget + actualNet;
+
+    // Keep these metrics for UI breakdowns
+    const totalDiscretionary = baseBudget;
+
+    // Actual discretionary spending (non-planned expenses)
     const actualDiscretionarySpend = actualTransactions
       .filter(t => t.amount < 0)
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    
-    // What's left for remaining weekends = total discretionary - what we've already spent on discretionary items
-    const remainingDiscretionary = totalDiscretionary - actualDiscretionarySpend;
-    
-    // Safe to spend per weekend (always divide by 4 weekends in the cycle)
-    // This gives a consistent view: if you overspend, the number goes down for remaining weekends
+
+    // Money left after reserving all planned recurring expenses
+    const remainingDiscretionary = currentBalance - plannedExpenses;
+
+    // Safe to spend per weekend (4 weekends in the cycle)
     const weekendsInCycle = 4;
     const safeToSpendPerWeekend = remainingDiscretionary / weekendsInCycle;
 
-    // Expected end balance considers ONLY actual transactions (for tracking purposes)
-    const expectedEndBalance = currentCycle.starting_balance + incomeActual + 
-      actualTransactions.reduce((sum, t) => sum + t.amount, 0);
-
-    // Current balance = starting balance + all transactions (actual + income received so far)
-    const allTransactionsSum = transactions.reduce((sum, t) => sum + t.amount, 0);
-    const currentBalance = currentCycle.starting_balance + incomeActual + allTransactionsSum;
+    // Expected end balance (excluding future planned items) in this model matches the current balance
+    const expectedEndBalance = currentBalance;
 
     const targetVariance = expectedEndBalance - currentCycle.target_end_balance;
 

@@ -157,9 +157,9 @@ export default function DashboardPage() {
               <span>${metrics.remainingDiscretionary.toLocaleString()} left ÷ 4 weekends</span>
             </div>
             {metrics.actualDiscretionarySpend > 0 && (
-              <div className="flex items-center gap-2 text-orange-500">
+              <div className="flex items-center gap-2 text-destructive">
                 <Clock className="w-3 h-3" />
-                <span>${metrics.actualDiscretionarySpend.toLocaleString()} already spent on extras</span>
+                <span>${metrics.actualDiscretionarySpend.toLocaleString()} spent so far</span>
               </div>
             )}
           </div>
