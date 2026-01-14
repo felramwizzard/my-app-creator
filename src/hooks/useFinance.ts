@@ -171,17 +171,28 @@ export function useFinance() {
     const budgets = budgetsQuery.data;
     const categories = categoriesQuery.data ?? [];
 
-    const totalSpend = transactions
+    // Only count actual (non-planned) expenses for totalSpend
+    const actualTransactions = transactions.filter(t => !t.is_planned);
+    const plannedTransactions = transactions.filter(t => t.is_planned);
+
+    const totalSpend = actualTransactions
       .filter(t => t.amount < 0)
       .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-    const totalIncome = transactions
+    const totalIncome = actualTransactions
       .filter(t => t.amount > 0)
       .reduce((sum, t) => sum + t.amount, 0);
 
+    // Calculate how much is committed (planned) but not yet paid
+    const plannedExpenses = plannedTransactions
+      .filter(t => t.amount < 0)
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
     const incomeActual = currentCycle.income_actual ?? currentCycle.income_planned;
+    
+    // Expected end balance considers ONLY actual transactions
     const expectedEndBalance = currentCycle.starting_balance + incomeActual + 
-      transactions.reduce((sum, t) => sum + t.amount, 0);
+      actualTransactions.reduce((sum, t) => sum + t.amount, 0);
 
     const targetVariance = expectedEndBalance - currentCycle.target_end_balance;
 
@@ -189,14 +200,15 @@ export function useFinance() {
     const now = toZonedTime(new Date(), TIMEZONE);
     const daysRemaining = Math.max(0, differenceInDays(endDate, now) + 1);
 
-    const remainingToSpend = expectedEndBalance - currentCycle.target_end_balance;
-    const safeToSpend = daysRemaining > 0 ? remainingToSpend / daysRemaining : 0;
+    // Remaining to spend = what's left after considering target AND planned expenses
+    const remainingAfterPlanned = expectedEndBalance - currentCycle.target_end_balance - plannedExpenses;
+    const safeToSpend = daysRemaining > 0 ? remainingAfterPlanned / daysRemaining : 0;
     const dailyBudget = safeToSpend;
 
-    // Budget by category
+    // Budget by category - only count actual transactions
     const budgetByCategory: BudgetCategoryMetric[] = budgets.map(b => {
       const category = categories.find(c => c.id === b.category_id);
-      const categoryTransactions = transactions.filter(t => t.category_id === b.category_id && t.amount < 0);
+      const categoryTransactions = actualTransactions.filter(t => t.category_id === b.category_id && t.amount < 0);
       const actual = categoryTransactions.reduce((sum, t) => sum + Math.abs(t.amount), 0);
       const variance = b.planned_amount - actual;
       const percentUsed = b.planned_amount > 0 ? (actual / b.planned_amount) * 100 : 0;
@@ -215,11 +227,12 @@ export function useFinance() {
       totalIncome,
       expectedEndBalance,
       targetVariance,
-      remainingToSpend,
+      remainingToSpend: remainingAfterPlanned,
       safeToSpend,
       daysRemaining,
       dailyBudget,
-      budgetByCategory
+      budgetByCategory,
+      plannedExpenses
     };
   })() : null;
 

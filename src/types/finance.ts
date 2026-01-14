@@ -105,6 +105,7 @@ export interface CycleMetrics {
   daysRemaining: number;
   dailyBudget: number;
   budgetByCategory: BudgetCategoryMetric[];
+  plannedExpenses: number;
 }
 
 export interface BudgetCategoryMetric {
