@@ -183,7 +183,7 @@ export type Database = {
           email: string | null
           id: string
           name: string | null
-          payday_day_of_week: number | null
+          payday_date: string | null
           timezone: string | null
           updated_at: string
         }
@@ -192,7 +192,7 @@ export type Database = {
           email?: string | null
           id: string
           name?: string | null
-          payday_day_of_week?: number | null
+          payday_date?: string | null
           timezone?: string | null
           updated_at?: string
         }
@@ -201,7 +201,7 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string | null
-          payday_day_of_week?: number | null
+          payday_date?: string | null
           timezone?: string | null
           updated_at?: string
         }

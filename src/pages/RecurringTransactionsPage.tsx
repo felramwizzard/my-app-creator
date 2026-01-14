@@ -36,7 +36,7 @@ import type { RecurringTransaction, RecurrenceFrequency } from "@/types/finance"
 
 export default function RecurringTransactionsPage() {
   const { recurringTransactions, isLoading, createRecurring, updateRecurring, deleteRecurring, generatePlannedTransactions, createPlannedTransactions } = useRecurringTransactions();
-  const { categories, currentCycle, transactions, paydayDayOfWeek } = useFinance();
+  const { categories, currentCycle, transactions, paydayDate } = useFinance();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -183,7 +183,7 @@ export default function RecurringTransactionsPage() {
         .reduce((sum, r) => {
           const cycleStart = parseISO(currentCycle.start_date);
           const cycleEnd = parseISO(currentCycle.end_date);
-          const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd, paydayDayOfWeek);
+          const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd, paydayDate);
           return sum + occurrences.length * Math.abs(r.amount);
         }, 0)
     : 0;
