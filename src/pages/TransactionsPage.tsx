@@ -6,16 +6,17 @@ import { Button } from "@/components/ui/button";
 import { TransactionItem } from "@/components/finance/TransactionItem";
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
 import { useFinance } from "@/hooks/useFinance";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { Category } from "@/types/finance";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-type FilterType = 'all' | 'uncategorized' | Category['type'];
+type FilterType = 'all' | 'uncategorized' | 'planned' | Category['type'];
 
 export default function TransactionsPage() {
   const navigate = useNavigate();
-  const { transactions, categories, bulkUpdateTransactions } = useFinance();
+  const { transactions, categories, bulkUpdateTransactions, updateTransaction } = useFinance();
   
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>('all');
@@ -38,6 +39,8 @@ export default function TransactionsPage() {
     // Type filter
     if (filter === 'uncategorized') {
       result = result.filter(t => !t.category_id);
+    } else if (filter === 'planned') {
+      result = result.filter(t => t.is_planned);
     } else if (filter !== 'all') {
       result = result.filter(t => t.category?.type === filter);
     }
@@ -82,6 +85,19 @@ export default function TransactionsPage() {
     setBulkCategory(null);
   };
 
+  const handleMarkAsPaid = async (id: string) => {
+    try {
+      await updateTransaction.mutateAsync({
+        id,
+        is_planned: false
+      });
+      toast.success("Marked as paid!");
+    } catch (error) {
+      console.error("Error marking as paid:", error);
+      toast.error("Failed to update transaction");
+    }
+  };
+
   return (
     <FinanceLayout>
       <div className="px-5 py-6 space-y-4">
@@ -106,15 +122,19 @@ export default function TransactionsPage() {
 
         {/* Filters */}
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-5 px-5">
-          {(['all', 'uncategorized', 'need', 'want', 'bucket'] as FilterType[]).map((f) => (
+          {(['all', 'planned', 'uncategorized', 'need', 'want', 'bucket'] as FilterType[]).map((f) => (
             <Button
               key={f}
               variant={filter === f ? 'default' : 'secondary'}
               size="sm"
               onClick={() => setFilter(f)}
-              className="shrink-0"
+              className={cn(
+                "shrink-0",
+                f === 'planned' && filter === f && "bg-amber-500 hover:bg-amber-600"
+              )}
             >
-              {f === 'all' ? 'All' : f === 'uncategorized' ? 'Uncategorized' : f.charAt(0).toUpperCase() + f.slice(1) + 's'}
+              {f === 'planned' && <Clock className="w-3 h-3 mr-1" />}
+              {f === 'all' ? 'All' : f === 'uncategorized' ? 'Uncategorized' : f === 'planned' ? 'Planned' : f.charAt(0).toUpperCase() + f.slice(1) + 's'}
             </Button>
           ))}
         </div>
@@ -171,6 +191,7 @@ export default function TransactionsPage() {
                     transaction={t}
                     selected={selectedIds.has(t.id)}
                     onClick={() => toggleSelection(t.id)}
+                    onMarkAsPaid={t.is_planned ? handleMarkAsPaid : undefined}
                   />
                 ))}
               </div>
