@@ -4,13 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useFinance } from "@/hooks/useFinance";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { LogOut, Upload, Tag, Calculator, Database } from "lucide-react";
+import { LogOut, Upload, Tag, Calculator, Sparkles, ChevronRight } from "lucide-react";
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { categories, currentCycle } = useFinance();
+  const { categories, currentCycle, merchantRules } = useFinance();
 
   const handleSignOut = async () => {
     await signOut();
@@ -25,9 +25,43 @@ export default function SettingsPage() {
 
         {/* Quick Actions */}
         <div className="space-y-3">
-          <Button variant="secondary" className="w-full justify-start gap-3" onClick={() => navigate("/import")}>
-            <Upload className="w-5 h-5" />
-            Import CSV
+          <Button 
+            variant="secondary" 
+            className="w-full justify-between" 
+            onClick={() => navigate("/import")}
+          >
+            <span className="flex items-center gap-3">
+              <Upload className="w-5 h-5" />
+              Import CSV
+            </span>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+          
+          <Button 
+            variant="secondary" 
+            className="w-full justify-between" 
+            onClick={() => navigate("/merchant-rules")}
+          >
+            <span className="flex items-center gap-3">
+              <Sparkles className="w-5 h-5" />
+              Merchant Rules
+              <span className="text-xs text-muted-foreground">
+                ({merchantRules.length})
+              </span>
+            </span>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+          
+          <Button 
+            variant="secondary" 
+            className="w-full justify-between" 
+            onClick={() => navigate("/calendar")}
+          >
+            <span className="flex items-center gap-3">
+              <Tag className="w-5 h-5" />
+              Calendar View
+            </span>
+            <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
 
