@@ -36,7 +36,7 @@ import type { RecurringTransaction, RecurrenceFrequency } from "@/types/finance"
 
 export default function RecurringTransactionsPage() {
   const { recurringTransactions, isLoading, createRecurring, updateRecurring, deleteRecurring, generatePlannedTransactions, createPlannedTransactions } = useRecurringTransactions();
-  const { categories, currentCycle, transactions } = useFinance();
+  const { categories, currentCycle, transactions, paydayDayOfWeek } = useFinance();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -176,14 +176,14 @@ export default function RecurringTransactionsPage() {
     return `Every ${dayName}`;
   };
 
-  // Calculate total recurring transactions within the actual cycle dates
+  // Calculate total recurring transactions within the actual cycle dates (excluding payday occurrences)
   const totalRecurringPerCycle = currentCycle 
     ? recurringTransactions
         .filter(r => r.is_active)
         .reduce((sum, r) => {
           const cycleStart = parseISO(currentCycle.start_date);
           const cycleEnd = parseISO(currentCycle.end_date);
-          const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd);
+          const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd, paydayDayOfWeek);
           return sum + occurrences.length * Math.abs(r.amount);
         }, 0)
     : 0;

@@ -8,20 +8,31 @@ import { toZonedTime } from 'date-fns-tz';
 const TIMEZONE = 'Australia/Sydney';
 
 // Helper to get all occurrences of a recurring transaction within a date range
+// If paydayDayOfWeek is provided, excludes occurrences on the cycle end date if it falls on payday
 export function getOccurrencesInCycleRange(
   recurring: { frequency: RecurrenceFrequency; day_of_week: number | null; day_of_month: number | null },
   rangeStart: Date,
-  rangeEnd: Date
+  rangeEnd: Date,
+  paydayDayOfWeek?: number | null
 ): Date[] {
   const dates: Date[] = [];
   let current = startOfDay(rangeStart);
+
+  // Helper to check if a date should be excluded (it's on end date AND that's payday)
+  const shouldExclude = (date: Date): boolean => {
+    if (paydayDayOfWeek === null || paydayDayOfWeek === undefined) return false;
+    const isOnEndDate = format(date, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd');
+    const isPayday = date.getDay() === paydayDayOfWeek;
+    return isOnEndDate && isPayday;
+  };
 
   if (recurring.frequency === 'monthly' && recurring.day_of_month !== null) {
     while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
       const targetDate = setDate(current, recurring.day_of_month);
       if (
         (isAfter(targetDate, rangeStart) || format(targetDate, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) &&
-        (isBefore(targetDate, rangeEnd) || format(targetDate, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd'))
+        (isBefore(targetDate, rangeEnd) || format(targetDate, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) &&
+        !shouldExclude(targetDate)
       ) {
         dates.push(targetDate);
       }
@@ -34,7 +45,10 @@ export function getOccurrencesInCycleRange(
       current = addWeeks(current, 1);
     }
     while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
-      if (isAfter(current, rangeStart) || format(current, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) {
+      if (
+        (isAfter(current, rangeStart) || format(current, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) &&
+        !shouldExclude(current)
+      ) {
         dates.push(new Date(current));
       }
       current = addWeeks(current, 1);
@@ -46,7 +60,10 @@ export function getOccurrencesInCycleRange(
       current = addWeeks(current, 2);
     }
     while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
-      if (isAfter(current, rangeStart) || format(current, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) {
+      if (
+        (isAfter(current, rangeStart) || format(current, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) &&
+        !shouldExclude(current)
+      ) {
         dates.push(new Date(current));
       }
       current = addWeeks(current, 2);
@@ -84,6 +101,24 @@ export function getCurrentCycleDates() {
 export function useFinance() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Fetch user profile (for payday setting)
+  const profileQuery = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user!.id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id
+  });
+
+  const paydayDayOfWeek = profileQuery.data?.payday_day_of_week ?? null;
 
   // Fetch current cycle
   const cyclesQuery = useQuery({
@@ -215,7 +250,7 @@ export function useFinance() {
           const cycleStart = parseISO(currentCycle.start_date);
           const cycleEnd = parseISO(currentCycle.end_date);
           const plannedExpensesFromTemplates = recurringTemplates.reduce((sum, r) => {
-            const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd);
+            const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd, paydayDayOfWeek);
             return sum + occurrences.length * Math.abs(Number(r.amount));
           }, 0);
 
@@ -329,7 +364,7 @@ export function useFinance() {
           const plannedTransactions: any[] = [];
 
           for (const recurring of recurringTransactions) {
-            const dates = getOccurrencesInCycleRange(recurring, cycleStart, cycleEnd);
+            const dates = getOccurrencesInCycleRange(recurring, cycleStart, cycleEnd, paydayDayOfWeek);
             
             for (const date of dates) {
               plannedTransactions.push({
@@ -574,9 +609,10 @@ export function useFinance() {
     budgets: budgetsQuery.data ?? [],
     merchantRules: merchantRulesQuery.data ?? [],
     metrics,
+    paydayDayOfWeek,
     
     // Loading states
-    isLoading: cyclesQuery.isLoading || categoriesQuery.isLoading,
+    isLoading: cyclesQuery.isLoading || categoriesQuery.isLoading || profileQuery.isLoading,
     hasFetchedCycles: cyclesQuery.isFetched,
     
     // Mutations
