@@ -1,6 +1,7 @@
 export type CategoryType = 'need' | 'want' | 'bucket';
 export type CycleStatus = 'open' | 'closed';
 export type TransactionMethod = 'manual' | 'csv' | 'bank';
+export type RecurrenceFrequency = 'weekly' | 'fortnightly' | 'monthly';
 
 export interface Profile {
   id: string;
@@ -60,6 +61,24 @@ export interface Transaction {
   notes: string | null;
   split_group_id: string | null;
   import_hash: string | null;
+  is_planned: boolean;
+  recurring_transaction_id: string | null;
+  created_at: string;
+  updated_at: string;
+  category?: Category;
+}
+
+export interface RecurringTransaction {
+  id: string;
+  user_id: string;
+  name: string;
+  amount: number;
+  category_id: string | null;
+  frequency: RecurrenceFrequency;
+  day_of_week: number | null;
+  day_of_month: number | null;
+  is_active: boolean;
+  notes: string | null;
   created_at: string;
   updated_at: string;
   category?: Category;

@@ -117,7 +117,9 @@ export default function QuickAddPage() {
         method: 'manual',
         notes: null,
         split_group_id: null,
-        import_hash: null
+        import_hash: null,
+        is_planned: false,
+        recurring_transaction_id: null
       });
 
       toast.success("Transaction added!");

@@ -19,7 +19,8 @@ import {
   X,
   Check,
   Loader2,
-  Calendar
+  Calendar,
+  Repeat
 } from "lucide-react";
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
 import {
@@ -137,6 +138,18 @@ export default function SettingsPage() {
             <span className="flex items-center gap-3">
               <Calendar className="w-5 h-5" />
               Calendar View
+            </span>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+          
+          <Button 
+            variant="secondary" 
+            className="w-full justify-between" 
+            onClick={() => navigate("/recurring")}
+          >
+            <span className="flex items-center gap-3">
+              <Repeat className="w-5 h-5" />
+              Recurring Transactions
             </span>
             <ChevronRight className="w-4 h-4" />
           </Button>
