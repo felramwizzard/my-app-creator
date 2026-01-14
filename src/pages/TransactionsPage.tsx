@@ -1,27 +1,27 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { FinanceLayout } from "@/components/layout/FinanceLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { TransactionItem } from "@/components/finance/TransactionItem";
+import { SwipeableTransactionItem } from "@/components/finance/SwipeableTransactionItem";
+import { TransactionDetailSheet } from "@/components/finance/TransactionDetailSheet";
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
 import { useFinance } from "@/hooks/useFinance";
-import { Search, Filter, X, Clock } from "lucide-react";
+import { Search, X, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import type { Category } from "@/types/finance";
+import type { Category, Transaction } from "@/types/finance";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type FilterType = 'all' | 'uncategorized' | 'planned' | Category['type'];
 
 export default function TransactionsPage() {
-  const navigate = useNavigate();
-  const { transactions, categories, bulkUpdateTransactions, updateTransaction } = useFinance();
+  const { transactions, categories, bulkUpdateTransactions, updateTransaction, deleteTransaction } = useFinance();
   
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCategory, setBulkCategory] = useState<Category | null>(null);
+  const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
 
   const filteredTransactions = useMemo(() => {
     let result = transactions;
@@ -95,6 +95,29 @@ export default function TransactionsPage() {
     } catch (error) {
       console.error("Error marking as paid:", error);
       toast.error("Failed to update transaction");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteTransaction.mutateAsync(id);
+      toast.success("Transaction deleted");
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+      toast.error("Failed to delete transaction");
+    }
+  };
+
+  const handleUpdateCategory = async (transactionId: string, categoryId: string) => {
+    try {
+      await updateTransaction.mutateAsync({
+        id: transactionId,
+        category_id: categoryId
+      });
+      toast.success("Category updated");
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast.error("Failed to update category");
     }
   };
 
@@ -184,14 +207,15 @@ export default function TransactionsPage() {
               <p className="text-xs font-medium text-muted-foreground mb-2 sticky top-0 bg-background py-1">
                 {format(parseISO(date), 'EEEE, MMMM d')}
               </p>
-              <div className="glass-card rounded-2xl divide-y divide-border/50">
+              <div className="glass-card rounded-2xl divide-y divide-border/50 overflow-hidden">
                 {txns.map((t) => (
-                  <TransactionItem
+                  <SwipeableTransactionItem
                     key={t.id}
                     transaction={t}
                     selected={selectedIds.has(t.id)}
-                    onClick={() => toggleSelection(t.id)}
+                    onClick={() => setDetailTransaction(t)}
                     onMarkAsPaid={t.is_planned ? handleMarkAsPaid : undefined}
+                    onDelete={handleDelete}
                   />
                 ))}
               </div>
@@ -205,6 +229,17 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
+
+      {/* Transaction Detail Sheet */}
+      <TransactionDetailSheet
+        transaction={detailTransaction}
+        open={!!detailTransaction}
+        onOpenChange={(open) => !open && setDetailTransaction(null)}
+        categories={categories}
+        onUpdateCategory={handleUpdateCategory}
+        onMarkAsPaid={handleMarkAsPaid}
+        onDelete={handleDelete}
+      />
     </FinanceLayout>
   );
 }
