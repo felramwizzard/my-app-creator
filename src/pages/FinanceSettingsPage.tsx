@@ -38,20 +38,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
-const DAYS_OF_WEEK = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
-];
-
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const { categories, currentCycle, merchantRules, updateCycle, paydayDayOfWeek } = useFinance();
+  const { categories, currentCycle, merchantRules, updateCycle, paydayDate } = useFinance();
   const queryClient = useQueryClient();
   
   const [isEditingCycle, setIsEditingCycle] = useState(false);
@@ -110,18 +100,22 @@ export default function SettingsPage() {
     }
   };
 
-  const handleUpdatePayday = async (newPayday: number) => {
+  const handleUpdatePayday = async (newPaydayDate: string) => {
     if (!user) return;
     setSavingPayday(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ payday_day_of_week: newPayday })
+        .update({ payday_date: newPaydayDate || null })
         .eq('id', user.id);
       
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-      toast.success(`Payday set to ${DAYS_OF_WEEK.find(d => d.value === newPayday)?.label}`);
+      if (newPaydayDate) {
+        toast.success(`Payday set to ${format(parseISO(newPaydayDate), 'MMM d, yyyy')}`);
+      } else {
+        toast.success("Payday cleared");
+      }
     } catch (error) {
       console.error("Error updating payday:", error);
       toast.error("Failed to update payday");
@@ -198,28 +192,36 @@ export default function SettingsPage() {
         {/* Payday Setting */}
         <section>
           <h2 className="font-semibold mb-3 flex items-center gap-2">
-            <DollarSign className="w-4 h-4" /> Payday
+            <DollarSign className="w-4 h-4" /> Payday Exclusion
           </h2>
           <div className="glass-card rounded-xl p-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Recurring transactions on your payday are excluded from the current cycle and count toward the next one.
+              Recurring transactions on this date are excluded from the current cycle and count toward the next one.
             </p>
-            <Select
-              value={paydayDayOfWeek?.toString() ?? "5"}
-              onValueChange={(value) => handleUpdatePayday(parseInt(value))}
-              disabled={savingPayday}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select payday" />
-              </SelectTrigger>
-              <SelectContent>
-                {DAYS_OF_WEEK.map((day) => (
-                  <SelectItem key={day.value} value={day.value.toString()}>
-                    {day.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={paydayDate ?? ""}
+                onChange={(e) => handleUpdatePayday(e.target.value)}
+                disabled={savingPayday}
+                className="flex-1"
+              />
+              {paydayDate && (
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => handleUpdatePayday("")}
+                  disabled={savingPayday}
+                >
+                  <span className="text-xs text-muted-foreground">Clear</span>
+                </Button>
+              )}
+            </div>
+            {paydayDate && (
+              <p className="text-xs text-muted-foreground">
+                Transactions on <span className="font-medium">{format(parseISO(paydayDate), 'EEEE, MMM d, yyyy')}</span> will be excluded.
+              </p>
+            )}
           </div>
         </section>
 

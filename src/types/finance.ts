@@ -8,7 +8,7 @@ export interface Profile {
   email: string | null;
   name: string | null;
   timezone: string;
-  payday_day_of_week: number | null; // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+  payday_date: string | null; // YYYY-MM-DD format date for payday exclusion
   created_at: string;
   updated_at: string;
 }

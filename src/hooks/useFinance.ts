@@ -8,22 +8,20 @@ import { toZonedTime } from 'date-fns-tz';
 const TIMEZONE = 'Australia/Sydney';
 
 // Helper to get all occurrences of a recurring transaction within a date range
-// If paydayDayOfWeek is provided, excludes occurrences on the cycle end date if it falls on payday
+// If paydayDate is provided, excludes occurrences that fall on that specific date
 export function getOccurrencesInCycleRange(
   recurring: { frequency: RecurrenceFrequency; day_of_week: number | null; day_of_month: number | null },
   rangeStart: Date,
   rangeEnd: Date,
-  paydayDayOfWeek?: number | null
+  paydayDate?: string | null
 ): Date[] {
   const dates: Date[] = [];
   let current = startOfDay(rangeStart);
 
-  // Helper to check if a date should be excluded (it's on end date AND that's payday)
+  // Helper to check if a date should be excluded (it matches the payday date)
   const shouldExclude = (date: Date): boolean => {
-    if (paydayDayOfWeek === null || paydayDayOfWeek === undefined) return false;
-    const isOnEndDate = format(date, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd');
-    const isPayday = date.getDay() === paydayDayOfWeek;
-    return isOnEndDate && isPayday;
+    if (!paydayDate) return false;
+    return format(date, 'yyyy-MM-dd') === paydayDate;
   };
 
   if (recurring.frequency === 'monthly' && recurring.day_of_month !== null) {
@@ -118,7 +116,7 @@ export function useFinance() {
     enabled: !!user?.id
   });
 
-  const paydayDayOfWeek = profileQuery.data?.payday_day_of_week ?? null;
+  const paydayDate = profileQuery.data?.payday_date ?? null;
 
   // Fetch current cycle
   const cyclesQuery = useQuery({
@@ -250,7 +248,7 @@ export function useFinance() {
           const cycleStart = parseISO(currentCycle.start_date);
           const cycleEnd = parseISO(currentCycle.end_date);
           const plannedExpensesFromTemplates = recurringTemplates.reduce((sum, r) => {
-            const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd, paydayDayOfWeek);
+            const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd, paydayDate);
             return sum + occurrences.length * Math.abs(Number(r.amount));
           }, 0);
 
@@ -364,7 +362,7 @@ export function useFinance() {
           const plannedTransactions: any[] = [];
 
           for (const recurring of recurringTransactions) {
-            const dates = getOccurrencesInCycleRange(recurring, cycleStart, cycleEnd, paydayDayOfWeek);
+            const dates = getOccurrencesInCycleRange(recurring, cycleStart, cycleEnd, paydayDate);
             
             for (const date of dates) {
               plannedTransactions.push({
@@ -609,7 +607,7 @@ export function useFinance() {
     budgets: budgetsQuery.data ?? [],
     merchantRules: merchantRulesQuery.data ?? [],
     metrics,
-    paydayDayOfWeek,
+    paydayDate,
     
     // Loading states
     isLoading: cyclesQuery.isLoading || categoriesQuery.isLoading || profileQuery.isLoading,
