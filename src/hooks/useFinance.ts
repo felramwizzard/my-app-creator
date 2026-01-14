@@ -1,11 +1,61 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import type { Cycle, Category, Transaction, Budget, MerchantRule, CycleMetrics, BudgetCategoryMetric } from '@/types/finance';
-import { differenceInDays, parseISO, format, addMonths, setDate, isAfter, isBefore } from 'date-fns';
+import type { Cycle, Category, Transaction, Budget, MerchantRule, CycleMetrics, BudgetCategoryMetric, RecurrenceFrequency } from '@/types/finance';
+import { differenceInDays, parseISO, format, addMonths, addWeeks, setDate, setDay, isAfter, isBefore, startOfDay } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 const TIMEZONE = 'Australia/Sydney';
+
+// Helper to get all occurrences of a recurring transaction within a date range
+function getOccurrencesInCycleRange(
+  recurring: { frequency: RecurrenceFrequency; day_of_week: number | null; day_of_month: number | null },
+  rangeStart: Date,
+  rangeEnd: Date
+): Date[] {
+  const dates: Date[] = [];
+  let current = startOfDay(rangeStart);
+
+  if (recurring.frequency === 'monthly' && recurring.day_of_month !== null) {
+    while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
+      const targetDate = setDate(current, recurring.day_of_month);
+      if (
+        (isAfter(targetDate, rangeStart) || format(targetDate, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) &&
+        (isBefore(targetDate, rangeEnd) || format(targetDate, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd'))
+      ) {
+        dates.push(targetDate);
+      }
+      current = addMonths(current, 1);
+      if (dates.length > 10) break;
+    }
+  } else if (recurring.frequency === 'weekly' && recurring.day_of_week !== null) {
+    current = setDay(current, recurring.day_of_week, { weekStartsOn: 0 });
+    if (isBefore(current, rangeStart)) {
+      current = addWeeks(current, 1);
+    }
+    while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
+      if (isAfter(current, rangeStart) || format(current, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) {
+        dates.push(new Date(current));
+      }
+      current = addWeeks(current, 1);
+      if (dates.length > 10) break;
+    }
+  } else if (recurring.frequency === 'fortnightly' && recurring.day_of_week !== null) {
+    current = setDay(current, recurring.day_of_week, { weekStartsOn: 0 });
+    if (isBefore(current, rangeStart)) {
+      current = addWeeks(current, 2);
+    }
+    while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
+      if (isAfter(current, rangeStart) || format(current, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) {
+        dates.push(new Date(current));
+      }
+      current = addWeeks(current, 2);
+      if (dates.length > 10) break;
+    }
+  }
+
+  return dates;
+}
 
 // Cycle date helpers
 export function getCurrentCycleDates() {
@@ -183,10 +233,54 @@ export function useFinance() {
         .single();
       
       if (error) throw error;
-      return data;
+      return data as Cycle;
     },
-    onSuccess: () => {
+    onSuccess: async (newCycle) => {
       queryClient.invalidateQueries({ queryKey: ['cycles'] });
+      
+      // Auto-generate planned transactions from recurring templates
+      try {
+        const { data: recurringTransactions } = await supabase
+          .from('recurring_transactions')
+          .select('*')
+          .eq('user_id', user!.id)
+          .eq('is_active', true);
+        
+        if (recurringTransactions && recurringTransactions.length > 0) {
+          const cycleStart = parseISO(newCycle.start_date);
+          const cycleEnd = parseISO(newCycle.end_date);
+          const plannedTransactions: any[] = [];
+
+          for (const recurring of recurringTransactions) {
+            const dates = getOccurrencesInCycleRange(recurring, cycleStart, cycleEnd);
+            
+            for (const date of dates) {
+              plannedTransactions.push({
+                user_id: user!.id,
+                cycle_id: newCycle.id,
+                date: format(date, 'yyyy-MM-dd'),
+                description: recurring.name,
+                merchant: recurring.name,
+                amount: -Math.abs(recurring.amount),
+                category_id: recurring.category_id,
+                method: 'manual',
+                notes: recurring.notes,
+                split_group_id: null,
+                import_hash: null,
+                is_planned: true,
+                recurring_transaction_id: recurring.id,
+              });
+            }
+          }
+
+          if (plannedTransactions.length > 0) {
+            await supabase.from('transactions').insert(plannedTransactions);
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to auto-generate planned transactions:', error);
+      }
     }
   });
 

@@ -76,12 +76,12 @@ export function useRecurringTransactions() {
     }
   });
 
-  // Generate planned transactions for current cycle
-  const generatePlannedTransactions = async () => {
-    if (!currentCycle || !recurringQuery.data) return [];
+  // Generate planned transactions for a specific cycle
+  const generatePlannedForCycle = async (cycleId: string, cycleStartDate: string, cycleEndDate: string) => {
+    if (!recurringQuery.data || recurringQuery.data.length === 0) return [];
 
-    const cycleStart = parseISO(currentCycle.start_date);
-    const cycleEnd = parseISO(currentCycle.end_date);
+    const cycleStart = parseISO(cycleStartDate);
+    const cycleEnd = parseISO(cycleEndDate);
     const plannedTransactions: Omit<Transaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>[] = [];
 
     for (const recurring of recurringQuery.data.filter(r => r.is_active)) {
@@ -89,7 +89,7 @@ export function useRecurringTransactions() {
       
       for (const date of dates) {
         plannedTransactions.push({
-          cycle_id: currentCycle.id,
+          cycle_id: cycleId,
           date: format(date, 'yyyy-MM-dd'),
           description: recurring.name,
           merchant: recurring.name,
@@ -106,6 +106,12 @@ export function useRecurringTransactions() {
     }
 
     return plannedTransactions;
+  };
+
+  // Generate planned transactions for current cycle (legacy method)
+  const generatePlannedTransactions = async () => {
+    if (!currentCycle || !recurringQuery.data) return [];
+    return generatePlannedForCycle(currentCycle.id, currentCycle.start_date, currentCycle.end_date);
   };
 
   // Bulk create planned transactions
@@ -133,6 +139,7 @@ export function useRecurringTransactions() {
     updateRecurring,
     deleteRecurring,
     generatePlannedTransactions,
+    generatePlannedForCycle,
     createPlannedTransactions,
   };
 }
