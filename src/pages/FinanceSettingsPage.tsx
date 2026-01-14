@@ -35,6 +35,8 @@ export default function SettingsPage() {
   const { categories, currentCycle, merchantRules, updateCycle } = useFinance();
   
   const [isEditingCycle, setIsEditingCycle] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [startingBalance, setStartingBalance] = useState("");
   const [incomePlanned, setIncomePlanned] = useState("");
   const [incomeActual, setIncomeActual] = useState("");
@@ -43,6 +45,8 @@ export default function SettingsPage() {
 
   const openCycleEditor = () => {
     if (currentCycle) {
+      setStartDate(currentCycle.start_date);
+      setEndDate(currentCycle.end_date);
       setStartingBalance(currentCycle.starting_balance.toString());
       setIncomePlanned(currentCycle.income_planned.toString());
       setIncomeActual(currentCycle.income_actual?.toString() || "");
@@ -54,10 +58,22 @@ export default function SettingsPage() {
   const handleSaveCycle = async () => {
     if (!currentCycle) return;
     
+    if (!startDate || !endDate) {
+      toast.error("Please set both start and end dates");
+      return;
+    }
+
+    if (new Date(endDate) <= new Date(startDate)) {
+      toast.error("End date must be after start date");
+      return;
+    }
+    
     setSaving(true);
     try {
       await updateCycle.mutateAsync({
         id: currentCycle.id,
+        start_date: startDate,
+        end_date: endDate,
         starting_balance: parseFloat(startingBalance) || 0,
         income_planned: parseFloat(incomePlanned) || 0,
         income_actual: incomeActual ? parseFloat(incomeActual) : null,
@@ -191,7 +207,32 @@ export default function SettingsPage() {
             <DialogTitle>Edit Cycle</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 pt-4 max-h-[70vh] overflow-y-auto">
+            {/* Cycle Dates */}
+            <div className="p-3 rounded-lg bg-secondary/50 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cycle Period</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="startDate" className="text-xs">Start Date</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="endDate" className="text-xs">End Date</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="startingBalance">Starting Balance ($)</Label>
               <Input
