@@ -99,6 +99,7 @@ export interface CycleMetrics {
   totalSpend: number;
   totalIncome: number;
   expectedEndBalance: number;
+  currentBalance: number;
   targetVariance: number;
   remainingToSpend: number;
   safeToSpend: number;
