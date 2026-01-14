@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRecurringTransactions, DAYS_OF_WEEK } from "@/hooks/useRecurringTransactions";
-import { useFinance } from "@/hooks/useFinance";
+import { useFinance, getOccurrencesInCycleRange } from "@/hooks/useFinance";
+import { parseISO } from "date-fns";
 import { toast } from "sonner";
 import { 
   Plus, 
@@ -175,17 +176,17 @@ export default function RecurringTransactionsPage() {
     return `Every ${dayName}`;
   };
 
-  // Calculate total monthly equivalent of all active recurring transactions
-  const totalRecurringPerCycle = recurringTransactions
-    .filter(r => r.is_active)
-    .reduce((sum, r) => {
-      // Estimate occurrences per month based on frequency
-      let multiplier = 1;
-      if (r.frequency === 'weekly') multiplier = 4;
-      else if (r.frequency === 'fortnightly') multiplier = 2;
-      else multiplier = 1; // monthly
-      return sum + Math.abs(r.amount) * multiplier;
-    }, 0);
+  // Calculate total recurring transactions within the actual cycle dates
+  const totalRecurringPerCycle = currentCycle 
+    ? recurringTransactions
+        .filter(r => r.is_active)
+        .reduce((sum, r) => {
+          const cycleStart = parseISO(currentCycle.start_date);
+          const cycleEnd = parseISO(currentCycle.end_date);
+          const occurrences = getOccurrencesInCycleRange(r, cycleStart, cycleEnd);
+          return sum + occurrences.length * Math.abs(r.amount);
+        }, 0)
+    : 0;
 
   return (
     <FinanceLayout>
