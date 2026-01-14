@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { currentCycle, metrics, transactions, isLoading } = useFinance();
+  const { currentCycle, metrics, transactions, isLoading, hasFetchedCycles } = useFinance();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -23,13 +23,14 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, navigate]);
 
+  // Only redirect to setup if we've actually fetched cycles and found none
   useEffect(() => {
-    if (!authLoading && user && !isLoading && !currentCycle) {
+    if (!authLoading && user && hasFetchedCycles && !currentCycle) {
       navigate("/setup");
     }
-  }, [user, authLoading, currentCycle, isLoading, navigate]);
+  }, [user, authLoading, currentCycle, hasFetchedCycles, navigate]);
 
-  if (authLoading || isLoading || !currentCycle || !metrics) {
+  if (authLoading || isLoading || !hasFetchedCycles || !currentCycle || !metrics) {
     return (
       <FinanceLayout>
         <div className="px-5 py-6 space-y-6">

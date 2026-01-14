@@ -389,6 +389,7 @@ export function useFinance() {
     
     // Loading states
     isLoading: cyclesQuery.isLoading || categoriesQuery.isLoading,
+    hasFetchedCycles: cyclesQuery.isFetched,
     
     // Mutations
     createCycle,
