@@ -3,10 +3,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import TasksPage from "./pages/TasksPage";
-import CalendarPage from "./pages/CalendarPage";
-import SettingsPage from "./pages/SettingsPage";
+import DashboardPage from "./pages/DashboardPage";
+import AuthPage from "./pages/AuthPage";
+import SetupPage from "./pages/SetupPage";
+import QuickAddPage from "./pages/QuickAddPage";
+import TransactionsPage from "./pages/TransactionsPage";
+import InsightsPage from "./pages/InsightsPage";
+import ImportPage from "./pages/ImportPage";
+import FinanceSettingsPage from "./pages/FinanceSettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,10 +22,14 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/tasks" element={<TasksPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/setup" element={<SetupPage />} />
+          <Route path="/add" element={<QuickAddPage />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/insights" element={<InsightsPage />} />
+          <Route path="/import" element={<ImportPage />} />
+          <Route path="/settings" element={<FinanceSettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
