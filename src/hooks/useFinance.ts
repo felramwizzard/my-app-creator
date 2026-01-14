@@ -210,6 +210,10 @@ export function useFinance() {
     const expectedEndBalance = currentCycle.starting_balance + incomeActual + 
       actualTransactions.reduce((sum, t) => sum + t.amount, 0);
 
+    // Current balance = starting balance + all transactions (actual + income received so far)
+    const allTransactionsSum = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const currentBalance = currentCycle.starting_balance + incomeActual + allTransactionsSum;
+
     const targetVariance = expectedEndBalance - currentCycle.target_end_balance;
 
     const endDate = parseISO(currentCycle.end_date);
@@ -244,6 +248,7 @@ export function useFinance() {
       totalSpend,
       totalIncome,
       expectedEndBalance,
+      currentBalance,
       targetVariance,
       remainingToSpend: remainingAfterPlanned,
       safeToSpend,

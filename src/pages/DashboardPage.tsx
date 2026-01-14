@@ -94,9 +94,9 @@ export default function DashboardPage() {
         <div className="glass-card rounded-2xl p-5 space-y-4">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Expected End Balance</p>
+              <p className="text-sm text-muted-foreground">Current Balance</p>
               <MoneyDisplay 
-                amount={metrics.expectedEndBalance} 
+                amount={metrics.currentBalance} 
                 size="xl" 
                 colorize={false}
               />
