@@ -9,7 +9,7 @@ import { TransactionDetailSheet } from "@/components/finance/TransactionDetailSh
 import { useFinance } from "@/hooks/useFinance";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO } from "date-fns";
-import { CalendarDays, TrendingUp, Target, ChevronRight, Clock } from "lucide-react";
+import { CalendarDays, TrendingUp, Target, ChevronRight, Clock, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -140,23 +140,29 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Safe to Spend */}
+        {/* Safe to Spend Per Weekend */}
         <div className="glass-card rounded-2xl p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-primary" />
+              <Calendar className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1">
-              <p className="text-xs text-muted-foreground">Safe to spend today</p>
-              <MoneyDisplay amount={metrics.safeToSpend} size="lg" />
+              <p className="text-xs text-muted-foreground">Safe to spend per weekend</p>
+              <MoneyDisplay amount={metrics.safeToSpendPerWeekend} size="lg" />
             </div>
           </div>
-          {metrics.plannedExpenses > 0 && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground pl-13">
-              <Clock className="w-3 h-3" />
-              <span>${metrics.plannedExpenses.toLocaleString()} in planned expenses reserved</span>
+          <div className="text-xs text-muted-foreground space-y-1">
+            {metrics.plannedExpenses > 0 && (
+              <div className="flex items-center gap-2">
+                <Clock className="w-3 h-3" />
+                <span>${metrics.plannedExpenses.toLocaleString()} reserved for planned expenses</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-3 h-3" />
+              <span>${metrics.remainingToSpend.toLocaleString()} total discretionary ÷ 4 weekends</span>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Budget Overview */}

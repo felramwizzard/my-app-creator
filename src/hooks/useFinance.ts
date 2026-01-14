@@ -202,6 +202,12 @@ export function useFinance() {
 
     // Remaining to spend = what's left after considering target AND planned expenses
     const remainingAfterPlanned = expectedEndBalance - currentCycle.target_end_balance - plannedExpenses;
+    
+    // Safe to spend per weekend (4 weekends in a typical cycle)
+    const weekendsInCycle = 4;
+    const safeToSpendPerWeekend = remainingAfterPlanned / weekendsInCycle;
+    
+    // Keep daily budget for other uses
     const safeToSpend = daysRemaining > 0 ? remainingAfterPlanned / daysRemaining : 0;
     const dailyBudget = safeToSpend;
 
@@ -229,6 +235,7 @@ export function useFinance() {
       targetVariance,
       remainingToSpend: remainingAfterPlanned,
       safeToSpend,
+      safeToSpendPerWeekend,
       daysRemaining,
       dailyBudget,
       budgetByCategory,
