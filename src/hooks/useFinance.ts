@@ -190,6 +190,23 @@ export function useFinance() {
     }
   });
 
+  const updateCycle = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Cycle> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('cycles')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cycles'] });
+    }
+  });
+
   const createCategory = useMutation({
     mutationFn: async (category: Omit<Category, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
@@ -393,6 +410,7 @@ export function useFinance() {
     
     // Mutations
     createCycle,
+    updateCycle,
     createCategory,
     updateCategory,
     deleteCategory,

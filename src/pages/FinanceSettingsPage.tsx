@@ -1,16 +1,77 @@
+import { useState } from "react";
 import { FinanceLayout } from "@/components/layout/FinanceLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useFinance } from "@/hooks/useFinance";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { LogOut, Upload, Tag, Calculator, Sparkles, ChevronRight } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { 
+  LogOut, 
+  Upload, 
+  Tag, 
+  Calculator, 
+  Sparkles, 
+  ChevronRight,
+  Pencil,
+  X,
+  Check,
+  Loader2,
+  Calendar
+} from "lucide-react";
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { categories, currentCycle, merchantRules } = useFinance();
+  const { categories, currentCycle, merchantRules, updateCycle } = useFinance();
+  
+  const [isEditingCycle, setIsEditingCycle] = useState(false);
+  const [startingBalance, setStartingBalance] = useState("");
+  const [incomePlanned, setIncomePlanned] = useState("");
+  const [incomeActual, setIncomeActual] = useState("");
+  const [targetEndBalance, setTargetEndBalance] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const openCycleEditor = () => {
+    if (currentCycle) {
+      setStartingBalance(currentCycle.starting_balance.toString());
+      setIncomePlanned(currentCycle.income_planned.toString());
+      setIncomeActual(currentCycle.income_actual?.toString() || "");
+      setTargetEndBalance(currentCycle.target_end_balance.toString());
+      setIsEditingCycle(true);
+    }
+  };
+
+  const handleSaveCycle = async () => {
+    if (!currentCycle) return;
+    
+    setSaving(true);
+    try {
+      await updateCycle.mutateAsync({
+        id: currentCycle.id,
+        starting_balance: parseFloat(startingBalance) || 0,
+        income_planned: parseFloat(incomePlanned) || 0,
+        income_actual: incomeActual ? parseFloat(incomeActual) : null,
+        target_end_balance: parseFloat(targetEndBalance) || 0,
+      });
+      toast.success("Cycle updated!");
+      setIsEditingCycle(false);
+    } catch (error) {
+      console.error("Error updating cycle:", error);
+      toast.error("Failed to update cycle");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -58,12 +119,50 @@ export default function SettingsPage() {
             onClick={() => navigate("/calendar")}
           >
             <span className="flex items-center gap-3">
-              <Tag className="w-5 h-5" />
+              <Calendar className="w-5 h-5" />
               Calendar View
             </span>
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
+
+        {/* Current Cycle */}
+        {currentCycle && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Calculator className="w-4 h-4" /> Current Cycle
+              </h2>
+              <Button variant="ghost" size="sm" onClick={openCycleEditor}>
+                <Pencil className="w-4 h-4 mr-1" /> Edit
+              </Button>
+            </div>
+            <div className="glass-card rounded-xl p-4 space-y-3 text-sm">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground pb-2 border-b border-border/50">
+                <Calendar className="w-3 h-3" />
+                {format(parseISO(currentCycle.start_date), 'MMM d')} — {format(parseISO(currentCycle.end_date), 'MMM d, yyyy')}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Starting Balance</span>
+                <span className="font-medium">${currentCycle.starting_balance.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Planned Income</span>
+                <span className="font-medium">${currentCycle.income_planned.toLocaleString()}</span>
+              </div>
+              {currentCycle.income_actual !== null && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Actual Income</span>
+                  <span className="font-medium">${currentCycle.income_actual.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Target End Balance</span>
+                <span className="font-medium text-primary">${currentCycle.target_end_balance.toLocaleString()}</span>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Categories */}
         <section>
@@ -79,34 +178,88 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Cycle Info */}
-        {currentCycle && (
-          <section>
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
-              <Calculator className="w-4 h-4" /> Current Cycle
-            </h2>
-            <div className="glass-card rounded-xl p-4 space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Starting Balance</span>
-                <span>${currentCycle.starting_balance.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Target End Balance</span>
-                <span>${currentCycle.target_end_balance.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Planned Income</span>
-                <span>${currentCycle.income_planned.toLocaleString()}</span>
-              </div>
-            </div>
-          </section>
-        )}
-
         {/* Sign Out */}
         <Button variant="destructive" className="w-full" onClick={handleSignOut}>
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
       </div>
+
+      {/* Edit Cycle Dialog */}
+      <Dialog open={isEditingCycle} onOpenChange={setIsEditingCycle}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Cycle</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="startingBalance">Starting Balance ($)</Label>
+              <Input
+                id="startingBalance"
+                type="number"
+                step="0.01"
+                value={startingBalance}
+                onChange={(e) => setStartingBalance(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="incomePlanned">Planned Income ($)</Label>
+              <Input
+                id="incomePlanned"
+                type="number"
+                step="0.01"
+                value={incomePlanned}
+                onChange={(e) => setIncomePlanned(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="incomeActual">Actual Income ($)</Label>
+              <Input
+                id="incomeActual"
+                type="number"
+                step="0.01"
+                placeholder="Leave empty to use planned"
+                value={incomeActual}
+                onChange={(e) => setIncomeActual(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Override if your actual income differs from planned
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="targetEndBalance">Target End Balance ($)</Label>
+              <Input
+                id="targetEndBalance"
+                type="number"
+                step="0.01"
+                value={targetEndBalance}
+                onChange={(e) => setTargetEndBalance(e.target.value)}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={() => setIsEditingCycle(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSaveCycle}
+                disabled={saving}
+              >
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </FinanceLayout>
   );
 }
