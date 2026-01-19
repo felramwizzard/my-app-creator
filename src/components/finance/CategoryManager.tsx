@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
+import { EmojiPicker } from "@/components/finance/EmojiPicker";
 import { useFinance } from "@/hooks/useFinance";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -167,14 +168,8 @@ export function CategoryManager({ mode = "full", onCategoryCreated }: CategoryMa
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="categoryIcon">Icon (emoji)</Label>
-                <Input
-                  id="categoryIcon"
-                  placeholder="🏠"
-                  value={icon}
-                  onChange={(e) => setIcon(e.target.value)}
-                  maxLength={2}
-                />
+                <Label>Icon (emoji)</Label>
+                <EmojiPicker value={icon} onChange={setIcon} />
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -288,14 +283,8 @@ export function CategoryManager({ mode = "full", onCategoryCreated }: CategoryMa
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="categoryIcon">Icon (emoji)</Label>
-              <Input
-                id="categoryIcon"
-                placeholder="🏠"
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                maxLength={2}
-              />
+              <Label>Icon (emoji)</Label>
+              <EmojiPicker value={icon} onChange={setIcon} />
             </div>
 
             <div className="flex gap-3 pt-2">
