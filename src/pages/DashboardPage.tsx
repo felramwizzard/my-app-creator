@@ -8,8 +8,8 @@ import { TransactionItem } from "@/components/finance/TransactionItem";
 import { TransactionDetailSheet } from "@/components/finance/TransactionDetailSheet";
 import { useFinance } from "@/hooks/useFinance";
 import { useAuth } from "@/hooks/useAuth";
-import { format, parseISO } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { format, parseISO, startOfWeek, endOfWeek } from "date-fns";
+import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 import { CalendarDays, TrendingUp, Target, ChevronRight, Clock, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -73,30 +73,37 @@ export default function DashboardPage() {
     }
   };
 
+  // Get current week's date range (Monday to Sunday) in Sydney timezone
+  const currentWeekRange = useMemo(() => {
+    const nowInSydney = toZonedTime(new Date(), TIMEZONE);
+    const weekStart = startOfWeek(nowInSydney, { weekStartsOn: 1 }); // Monday
+    const weekEnd = endOfWeek(nowInSydney, { weekStartsOn: 1 }); // Sunday
+    return {
+      startYmd: format(weekStart, 'yyyy-MM-dd'),
+      endYmd: format(weekEnd, 'yyyy-MM-dd'),
+      startDate: weekStart,
+      endDate: weekEnd
+    };
+  }, []);
+
   const upcomingPlannedTransactions = useMemo(() => {
     const planned = transactions.filter((t) => t.is_planned);
     if (planned.length === 0) return [];
 
-    const todayYmd = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
-    const todayMs = ymdToUtcMs(todayYmd);
-
-    const inNext7Days = planned.filter((t) => {
-      const txMs = ymdToUtcMs(t.date);
-      const diffDays = Math.floor((txMs - todayMs) / 86400000);
-      return diffDays >= 0 && diffDays < 7;
+    // Filter transactions within current week (Monday to Sunday)
+    const inCurrentWeek = planned.filter((t) => {
+      return t.date >= currentWeekRange.startYmd && t.date <= currentWeekRange.endYmd;
     });
 
-    if (inNext7Days.length === 0) return [];
+    if (inCurrentWeek.length === 0) return [];
 
-    const nextDate = inNext7Days.reduce(
-      (min, t) => (t.date < min ? t.date : min),
-      inNext7Days[0].date
-    );
-
-    return inNext7Days
-      .filter((t) => t.date === nextDate)
-      .sort((a, b) => a.description.localeCompare(b.description));
-  }, [transactions]);
+    // Sort by date, then by description
+    return inCurrentWeek.sort((a, b) => {
+      const dateCompare = a.date.localeCompare(b.date);
+      if (dateCompare !== 0) return dateCompare;
+      return a.description.localeCompare(b.description);
+    });
+  }, [transactions, currentWeekRange]);
 
   const hasAnyTransactions = transactions.length > 0;
 
@@ -215,11 +222,16 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* Upcoming Transactions */}
+        {/* Upcoming Transactions - Current Week */}
         {upcomingPlannedTransactions.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Upcoming Transactions</h2>
+              <div>
+                <h2 className="font-semibold">This Week</h2>
+                <p className="text-xs text-muted-foreground">
+                  {format(currentWeekRange.startDate, 'MMM d')} – {format(currentWeekRange.endDate, 'MMM d')}
+                </p>
+              </div>
               <Button variant="ghost" size="sm" onClick={() => navigate("/transactions")}>
                 View all <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
