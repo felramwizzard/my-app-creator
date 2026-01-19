@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FinanceLayout } from "@/components/layout/FinanceLayout";
 import { MoneyDisplay } from "@/components/finance/MoneyDisplay";
@@ -9,11 +9,19 @@ import { TransactionDetailSheet } from "@/components/finance/TransactionDetailSh
 import { useFinance } from "@/hooks/useFinance";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { CalendarDays, TrendingUp, Target, ChevronRight, Clock, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Transaction } from "@/types/finance";
+
+const TIMEZONE = 'Australia/Sydney';
+
+const ymdToUtcMs = (ymd: string) => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+};
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -77,7 +85,32 @@ export default function DashboardPage() {
     );
   }
 
-  const recentTransactions = transactions.slice(0, 5);
+  const upcomingPlannedTransactions = useMemo(() => {
+    const planned = transactions.filter((t) => t.is_planned);
+    if (planned.length === 0) return [];
+
+    const todayYmd = formatInTimeZone(new Date(), TIMEZONE, 'yyyy-MM-dd');
+    const todayMs = ymdToUtcMs(todayYmd);
+
+    const inNext7Days = planned.filter((t) => {
+      const txMs = ymdToUtcMs(t.date);
+      const diffDays = Math.floor((txMs - todayMs) / 86400000);
+      return diffDays >= 0 && diffDays < 7;
+    });
+
+    if (inNext7Days.length === 0) return [];
+
+    const nextDate = inNext7Days.reduce(
+      (min, t) => (t.date < min ? t.date : min),
+      inNext7Days[0].date
+    );
+
+    return inNext7Days
+      .filter((t) => t.date === nextDate)
+      .sort((a, b) => a.description.localeCompare(b.description));
+  }, [transactions]);
+
+  const hasAnyTransactions = transactions.length > 0;
 
   return (
     <FinanceLayout>
@@ -182,34 +215,32 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* Recent Transactions */}
-        {recentTransactions.length > 0 && (
+        {/* Upcoming Transactions */}
+        {upcomingPlannedTransactions.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Recent Transactions</h2>
+              <h2 className="font-semibold">Upcoming Transactions</h2>
               <Button variant="ghost" size="sm" onClick={() => navigate("/transactions")}>
                 View all <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
             <div className="glass-card rounded-2xl divide-y divide-border/50">
-              {recentTransactions.map((t) => (
-                <TransactionItem 
-                  key={t.id} 
+              {upcomingPlannedTransactions.map((t) => (
+                <TransactionItem
+                  key={t.id}
                   transaction={t}
                   onClick={() => setDetailTransaction(t)}
-                  onMarkAsPaid={t.is_planned ? handleMarkAsPaid : undefined}
+                  onMarkAsPaid={handleMarkAsPaid}
                 />
               ))}
             </div>
           </section>
         )}
 
-        {recentTransactions.length === 0 && (
+        {!hasAnyTransactions && (
           <div className="glass-card rounded-2xl p-8 text-center">
             <p className="text-muted-foreground mb-4">No transactions yet</p>
-            <Button onClick={() => navigate("/add")}>
-              Add your first transaction
-            </Button>
+            <Button onClick={() => navigate("/add")}>Add your first transaction</Button>
           </div>
         )}
       </div>
