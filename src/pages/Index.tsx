@@ -27,28 +27,38 @@ const Index = () => {
     day: "numeric",
   });
 
-  // Get planned transactions falling in the next 7 days
+  // Get the most immediate planned transactions that fall within the next 7 days
+  // (If multiple planned items share the same next due date, show them all)
   const upcomingTransactions = useMemo(() => {
     if (!transactions) return [];
-    
-    const now = toZonedTime(new Date(), TIMEZONE);
-    const todayStart = startOfDay(now);
-    
-    return transactions
-      .filter(t => {
-        // Only show planned transactions
-        if (!t.is_planned) return false;
-        
-        // Parse the date string (YYYY-MM-DD) as local date parts
-        const [year, month, day] = t.date.split('-').map(Number);
-        const txDate = new Date(year, month - 1, day);
-        
-        // Check if within next 7 days (today to today+6)
-        const daysDiff = differenceInDays(txDate, todayStart);
-        return daysDiff >= 0 && daysDiff < 7;
-      })
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 5);
+
+    const planned = transactions.filter((t) => t.is_planned);
+    if (planned.length === 0) return [];
+
+    const nowSydney = toZonedTime(new Date(), TIMEZONE);
+    const todayUtcMs = Date.UTC(
+      nowSydney.getFullYear(),
+      nowSydney.getMonth(),
+      nowSydney.getDate()
+    );
+
+    const inNext7Days = planned.filter((t) => {
+      const [year, month, day] = t.date.split("-").map(Number);
+      const txUtcMs = Date.UTC(year, month - 1, day);
+      const diffDays = Math.floor((txUtcMs - todayUtcMs) / 86400000);
+      return diffDays >= 0 && diffDays < 7;
+    });
+
+    if (inNext7Days.length === 0) return [];
+
+    const nextDate = inNext7Days.reduce(
+      (min, t) => (t.date < min ? t.date : min),
+      inNext7Days[0].date
+    );
+
+    return inNext7Days
+      .filter((t) => t.date === nextDate)
+      .sort((a, b) => a.description.localeCompare(b.description));
   }, [transactions]);
 
   return (
