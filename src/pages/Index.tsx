@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useTasks } from "@/hooks/useTasks";
 import { useFinance } from "@/hooks/useFinance";
 import { TransactionItem } from "@/components/finance/TransactionItem";
-import { parseISO, addDays, isBefore, isAfter, startOfDay } from "date-fns";
+import { addDays, startOfDay, differenceInDays } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = 'Australia/Sydney';
@@ -27,23 +27,27 @@ const Index = () => {
     day: "numeric",
   });
 
-  // Get transactions falling in the next 7 days
+  // Get planned transactions falling in the next 7 days
   const upcomingTransactions = useMemo(() => {
     if (!transactions) return [];
     
     const now = toZonedTime(new Date(), TIMEZONE);
     const todayStart = startOfDay(now);
-    const sevenDaysLater = addDays(todayStart, 7);
     
     return transactions
       .filter(t => {
-        const txDate = parseISO(t.date);
-        return (
-          (isAfter(txDate, todayStart) || txDate.getTime() === todayStart.getTime()) &&
-          isBefore(txDate, sevenDaysLater)
-        );
+        // Only show planned transactions
+        if (!t.is_planned) return false;
+        
+        // Parse the date string (YYYY-MM-DD) as local date parts
+        const [year, month, day] = t.date.split('-').map(Number);
+        const txDate = new Date(year, month - 1, day);
+        
+        // Check if within next 7 days (today to today+6)
+        const daysDiff = differenceInDays(txDate, todayStart);
+        return daysDiff >= 0 && daysDiff < 7;
       })
-      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
+      .sort((a, b) => a.date.localeCompare(b.date))
       .slice(0, 5);
   }, [transactions]);
 
