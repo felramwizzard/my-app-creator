@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Plus } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -8,10 +8,17 @@ import { TaskItem } from "@/components/tasks/TaskItem";
 import { AddTaskSheet } from "@/components/tasks/AddTaskSheet";
 import { Button } from "@/components/ui/button";
 import { useTasks } from "@/hooks/useTasks";
+import { useFinance } from "@/hooks/useFinance";
+import { TransactionItem } from "@/components/finance/TransactionItem";
+import { parseISO, addDays, isBefore, isAfter, startOfDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
+
+const TIMEZONE = 'Australia/Sydney';
 
 const Index = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const { tasks, addTask, toggleTask, toggleStar, deleteTask, completedCount, starredCount, totalCount } = useTasks();
+  const { transactions } = useFinance();
 
   const upcomingTasks = tasks.filter((t) => !t.completed).slice(0, 3);
   const today = new Date().toLocaleDateString("en-US", {
@@ -19,6 +26,26 @@ const Index = () => {
     month: "long",
     day: "numeric",
   });
+
+  // Get transactions falling in the next 7 days
+  const upcomingTransactions = useMemo(() => {
+    if (!transactions) return [];
+    
+    const now = toZonedTime(new Date(), TIMEZONE);
+    const todayStart = startOfDay(now);
+    const sevenDaysLater = addDays(todayStart, 7);
+    
+    return transactions
+      .filter(t => {
+        const txDate = parseISO(t.date);
+        return (
+          (isAfter(txDate, todayStart) || txDate.getTime() === todayStart.getTime()) &&
+          isBefore(txDate, sevenDaysLater)
+        );
+      })
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())
+      .slice(0, 5);
+  }, [transactions]);
 
   return (
     <MobileLayout>
@@ -36,22 +63,20 @@ const Index = () => {
 
         <QuickActions onAddTask={() => setIsAddOpen(true)} />
 
-        {upcomingTasks.length > 0 && (
+        {upcomingTransactions.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Upcoming Tasks</h2>
+              <h2 className="font-semibold">Upcoming Transactions</h2>
               <Button variant="ghost" size="sm" className="text-primary" asChild>
-                <a href="/tasks">View all</a>
+                <a href="/transactions">View all</a>
               </Button>
             </div>
-            <div className="space-y-3">
-              {upcomingTasks.map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onToggle={toggleTask}
-                  onToggleStar={toggleStar}
-                  onDelete={deleteTask}
+            <div className="space-y-2">
+              {upcomingTransactions.map((transaction) => (
+                <TransactionItem
+                  key={transaction.id}
+                  transaction={transaction}
+                  onClick={() => {}}
                 />
               ))}
             </div>
