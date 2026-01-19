@@ -289,8 +289,9 @@ export function useFinance() {
 
     // Count remaining weekends in the cycle (Saturdays that haven't passed yet)
     const countRemainingWeekends = () => {
+      const today = toZonedTime(new Date(), TIMEZONE);
       let count = 0;
-      let checkDate = startOfDay(now);
+      let checkDate = startOfDay(today);
       
       // If today is Saturday or Sunday, include this weekend
       const dayOfWeek = checkDate.getDay();
@@ -306,7 +307,7 @@ export function useFinance() {
       } else {
         // Weekday - find next Saturday
         checkDate = setDay(checkDate, 6, { weekStartsOn: 0 });
-        if (isBefore(checkDate, now)) {
+        if (isBefore(checkDate, today)) {
           checkDate = addWeeks(checkDate, 1);
         }
       }
