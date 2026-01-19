@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
+import { CategoryManager } from "@/components/finance/CategoryManager";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/types/finance";
 
@@ -244,15 +245,21 @@ export default function QuickAddPage() {
             )}
 
             {/* Category picker */}
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full justify-between"
-              onClick={() => setShowCategories(!showCategories)}
-            >
-              {selectedCategory ? 'Change category' : 'Select category'}
-              <Tag className="w-4 h-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1 justify-between"
+                onClick={() => setShowCategories(!showCategories)}
+              >
+                {selectedCategory ? 'Change category' : 'Select category'}
+                <Tag className="w-4 h-4" />
+              </Button>
+              <CategoryManager 
+                mode="inline" 
+                onCategoryCreated={(cat) => setSelectedCategory(cat)} 
+              />
+            </div>
 
             {showCategories && (
               <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-card border border-border/50 max-h-60 overflow-y-auto">
