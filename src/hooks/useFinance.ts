@@ -287,9 +287,42 @@ export function useFinance() {
     // Money left after reserving all planned recurring expenses
     const remainingDiscretionary = currentBalance - plannedExpenses;
 
-    // Safe to spend per weekend (4 weekends in the cycle)
-    const weekendsInCycle = 4;
-    const safeToSpendPerWeekend = remainingDiscretionary / weekendsInCycle;
+    // Count remaining weekends in the cycle (Saturdays that haven't passed yet)
+    const countRemainingWeekends = () => {
+      let count = 0;
+      let checkDate = startOfDay(now);
+      
+      // If today is Saturday or Sunday, include this weekend
+      const dayOfWeek = checkDate.getDay();
+      if (dayOfWeek === 0) {
+        // Sunday - the weekend started yesterday, count it as remaining
+        count++;
+        checkDate = addWeeks(checkDate, 1);
+        checkDate = setDay(checkDate, 6, { weekStartsOn: 0 }); // Next Saturday
+      } else if (dayOfWeek === 6) {
+        // Saturday - count this weekend
+        count++;
+        checkDate = addWeeks(checkDate, 1);
+      } else {
+        // Weekday - find next Saturday
+        checkDate = setDay(checkDate, 6, { weekStartsOn: 0 });
+        if (isBefore(checkDate, now)) {
+          checkDate = addWeeks(checkDate, 1);
+        }
+      }
+      
+      // Count remaining Saturdays until cycle end
+      while (isBefore(checkDate, cycleEnd) || format(checkDate, 'yyyy-MM-dd') === format(cycleEnd, 'yyyy-MM-dd')) {
+        count++;
+        checkDate = addWeeks(checkDate, 1);
+        if (count > 10) break; // Safety limit
+      }
+      
+      return Math.max(1, count); // At least 1 to avoid division by zero
+    };
+    
+    const weekendsRemaining = countRemainingWeekends();
+    const safeToSpendPerWeekend = remainingDiscretionary / weekendsRemaining;
 
     // Expected end balance (excluding future planned items) in this model matches the current balance
     const expectedEndBalance = currentBalance;
@@ -333,6 +366,7 @@ export function useFinance() {
       remainingToSpend: remainingAfterPlanned,
       safeToSpend,
       safeToSpendPerWeekend,
+      weekendsRemaining,
       daysRemaining,
       dailyBudget,
       budgetByCategory,
