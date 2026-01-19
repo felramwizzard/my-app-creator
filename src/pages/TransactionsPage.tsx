@@ -290,25 +290,40 @@ export default function TransactionsPage() {
 
         {/* Transaction List */}
         <div className="space-y-6">
-          {groupedTransactions.map(([date, txns]) => (
-            <div key={date}>
-              <p className="text-xs font-medium text-muted-foreground mb-2 sticky top-0 bg-background py-1">
-                {format(ymdToLocalDate(date), 'EEEE, MMMM d')}
-              </p>
-              <div className="glass-card rounded-2xl divide-y divide-border/50 overflow-hidden">
-                {txns.map((t) => (
-                  <SwipeableTransactionItem
-                    key={t.id}
-                    transaction={t}
-                    selected={selectedIds.has(t.id)}
-                    onClick={() => setDetailTransaction(t)}
-                    onMarkAsPaid={t.is_planned ? handleMarkAsPaid : undefined}
-                    onDelete={handleDelete}
-                  />
-                ))}
+          {groupedTransactions.map(([date, txns], index) => {
+            const todayYmd = formatInTimeZone(new Date(), TIMEZONE, 'yyyy-MM-dd');
+            const isFirstPastDate = date < todayYmd && 
+              (index === 0 || groupedTransactions[index - 1][0] >= todayYmd);
+            
+            return (
+              <div key={date}>
+                {isFirstPastDate && sortBy === 'upcoming' && (
+                  <div className="flex items-center gap-3 mb-4 mt-2">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Past Transactions
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                )}
+                <p className="text-xs font-medium text-muted-foreground mb-2 sticky top-0 bg-background py-1">
+                  {format(ymdToLocalDate(date), 'EEEE, MMMM d')}
+                </p>
+                <div className="glass-card rounded-2xl divide-y divide-border/50 overflow-hidden">
+                  {txns.map((t) => (
+                    <SwipeableTransactionItem
+                      key={t.id}
+                      transaction={t}
+                      selected={selectedIds.has(t.id)}
+                      onClick={() => setDetailTransaction(t)}
+                      onMarkAsPaid={t.is_planned ? handleMarkAsPaid : undefined}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {filteredTransactions.length === 0 && (
