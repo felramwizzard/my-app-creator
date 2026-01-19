@@ -6,19 +6,28 @@ import { SwipeableTransactionItem } from "@/components/finance/SwipeableTransact
 import { TransactionDetailSheet } from "@/components/finance/TransactionDetailSheet";
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
 import { useFinance } from "@/hooks/useFinance";
-import { Search, X, Clock } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Search, X, Clock, ArrowUpDown, CalendarDays } from "lucide-react";
+import { format, parseISO, isAfter, isBefore, startOfDay } from "date-fns";
 import type { Category, Transaction } from "@/types/finance";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type FilterType = 'all' | 'uncategorized' | 'planned' | Category['type'];
+type SortType = 'upcoming' | 'newest' | 'oldest' | 'amount-high' | 'amount-low';
 
 export default function TransactionsPage() {
   const { transactions, categories, bulkUpdateTransactions, updateTransaction, deleteTransaction } = useFinance();
   
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>('all');
+  const [sortBy, setSortBy] = useState<SortType>('upcoming');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCategory, setBulkCategory] = useState<Category | null>(null);
   const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
@@ -45,8 +54,43 @@ export default function TransactionsPage() {
       result = result.filter(t => t.category?.type === filter);
     }
 
+    // Sort
+    const today = startOfDay(new Date());
+    result = [...result].sort((a, b) => {
+      const dateA = parseISO(a.date);
+      const dateB = parseISO(b.date);
+      
+      switch (sortBy) {
+        case 'upcoming':
+          // Closest upcoming dates first, then past dates newest first
+          const aIsFuture = !isBefore(dateA, today);
+          const bIsFuture = !isBefore(dateB, today);
+          
+          if (aIsFuture && bIsFuture) {
+            // Both future: closest first
+            return dateA.getTime() - dateB.getTime();
+          } else if (!aIsFuture && !bIsFuture) {
+            // Both past: most recent first
+            return dateB.getTime() - dateA.getTime();
+          } else {
+            // Future comes before past
+            return aIsFuture ? -1 : 1;
+          }
+        case 'newest':
+          return dateB.getTime() - dateA.getTime();
+        case 'oldest':
+          return dateA.getTime() - dateB.getTime();
+        case 'amount-high':
+          return Math.abs(b.amount) - Math.abs(a.amount);
+        case 'amount-low':
+          return Math.abs(a.amount) - Math.abs(b.amount);
+        default:
+          return 0;
+      }
+    });
+
     return result;
-  }, [transactions, search, filter]);
+  }, [transactions, search, filter, sortBy]);
 
   // Group by date
   const groupedTransactions = useMemo(() => {
@@ -60,8 +104,30 @@ export default function TransactionsPage() {
       groups[dateKey].push(t);
     });
 
-    return Object.entries(groups).sort(([a], [b]) => b.localeCompare(a));
-  }, [filteredTransactions]);
+    // Sort groups based on sortBy
+    const today = startOfDay(new Date());
+    return Object.entries(groups).sort(([a], [b]) => {
+      const dateA = parseISO(a);
+      const dateB = parseISO(b);
+      
+      if (sortBy === 'upcoming') {
+        const aIsFuture = !isBefore(dateA, today);
+        const bIsFuture = !isBefore(dateB, today);
+        
+        if (aIsFuture && bIsFuture) {
+          return dateA.getTime() - dateB.getTime();
+        } else if (!aIsFuture && !bIsFuture) {
+          return dateB.getTime() - dateA.getTime();
+        } else {
+          return aIsFuture ? -1 : 1;
+        }
+      } else if (sortBy === 'oldest') {
+        return a.localeCompare(b);
+      } else {
+        return b.localeCompare(a);
+      }
+    });
+  }, [filteredTransactions, sortBy]);
 
   const toggleSelection = (id: string) => {
     const newSelected = new Set(selectedIds);
@@ -132,15 +198,34 @@ export default function TransactionsPage() {
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search transactions..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        {/* Search and Sort */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search transactions..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortType)}>
+            <SelectTrigger className="w-[130px] shrink-0">
+              <ArrowUpDown className="w-3 h-3 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="upcoming">
+                <span className="flex items-center gap-2">
+                  <CalendarDays className="w-3 h-3" /> Upcoming
+                </span>
+              </SelectItem>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+              <SelectItem value="amount-high">Highest $</SelectItem>
+              <SelectItem value="amount-low">Lowest $</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Filters */}
