@@ -1,10 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useFinance } from './useFinance';
+import { useFinance, parseYmdLocal, formatYmd } from './useFinance';
 import type { RecurringTransaction, Category, Transaction } from '@/types/finance';
-import { addDays, addWeeks, addMonths, parseISO, format, isBefore, isAfter, setDay, setDate, startOfDay } from 'date-fns';
-
+import { addWeeks, addMonths, isBefore, isAfter, setDay, setDate, startOfDay } from 'date-fns';
 export function useRecurringTransactions() {
   const { user } = useAuth();
   const { currentCycle, categories } = useFinance();
@@ -80,17 +79,20 @@ export function useRecurringTransactions() {
   const generatePlannedForCycle = async (cycleId: string, cycleStartDate: string, cycleEndDate: string) => {
     if (!recurringQuery.data || recurringQuery.data.length === 0) return [];
 
-    const cycleStart = parseISO(cycleStartDate);
-    const cycleEnd = parseISO(cycleEndDate);
+    // Parse dates using helper to ensure correct day-of-week calculations
+    const cycleStart = parseYmdLocal(cycleStartDate);
+    const cycleEnd = parseYmdLocal(cycleEndDate);
     const plannedTransactions: Omit<Transaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>[] = [];
 
     for (const recurring of recurringQuery.data.filter(r => r.is_active)) {
       const dates = getOccurrencesInRange(recurring, cycleStart, cycleEnd);
       
       for (const date of dates) {
+        // Format using the shared helper to avoid timezone shifts
+        const dateStr = formatYmd(date);
         plannedTransactions.push({
           cycle_id: cycleId,
-          date: format(date, 'yyyy-MM-dd'),
+          date: dateStr,
           description: recurring.name,
           merchant: recurring.name,
           amount: -Math.abs(recurring.amount), // Expenses are negative
@@ -153,13 +155,17 @@ function getOccurrencesInRange(
   const dates: Date[] = [];
   let current = startOfDay(rangeStart);
 
+  // Helper to compare dates by YYYY-MM-DD only
+  const ymdEqual = (a: Date, b: Date) => formatYmd(a) === formatYmd(b);
+  const ymdBefore = (a: Date, b: Date) => formatYmd(a) < formatYmd(b);
+
   if (recurring.frequency === 'monthly' && recurring.day_of_month !== null) {
     // Monthly: specific day of month
-    while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
+    while (ymdBefore(current, rangeEnd) || ymdEqual(current, rangeEnd)) {
       const targetDate = setDate(current, recurring.day_of_month);
       if (
-        (isAfter(targetDate, rangeStart) || format(targetDate, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd')) &&
-        (isBefore(targetDate, rangeEnd) || format(targetDate, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd'))
+        (isAfter(targetDate, rangeStart) || ymdEqual(targetDate, rangeStart)) &&
+        (ymdBefore(targetDate, rangeEnd) || ymdEqual(targetDate, rangeEnd))
       ) {
         dates.push(targetDate);
       }
@@ -173,10 +179,8 @@ function getOccurrencesInRange(
     if (isBefore(current, rangeStart)) {
       current = addWeeks(current, 1);
     }
-    while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
-      if (
-        (isAfter(current, rangeStart) || format(current, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd'))
-      ) {
+    while (ymdBefore(current, rangeEnd) || ymdEqual(current, rangeEnd)) {
+      if (isAfter(current, rangeStart) || ymdEqual(current, rangeStart)) {
         dates.push(new Date(current));
       }
       current = addWeeks(current, 1);
@@ -189,10 +193,8 @@ function getOccurrencesInRange(
     if (isBefore(current, rangeStart)) {
       current = addWeeks(current, 2);
     }
-    while (isBefore(current, rangeEnd) || format(current, 'yyyy-MM-dd') === format(rangeEnd, 'yyyy-MM-dd')) {
-      if (
-        (isAfter(current, rangeStart) || format(current, 'yyyy-MM-dd') === format(rangeStart, 'yyyy-MM-dd'))
-      ) {
+    while (ymdBefore(current, rangeEnd) || ymdEqual(current, rangeEnd)) {
+      if (isAfter(current, rangeStart) || ymdEqual(current, rangeStart)) {
         dates.push(new Date(current));
       }
       current = addWeeks(current, 2);

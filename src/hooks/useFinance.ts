@@ -7,6 +7,17 @@ import { toZonedTime } from 'date-fns-tz';
 
 const TIMEZONE = 'Australia/Sydney';
 
+// Helper to parse YYYY-MM-DD as a local date (avoiding UTC timezone shifts)
+export function parseYmdLocal(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0); // Use noon to avoid DST edge cases
+}
+
+// Helper to format a date to YYYY-MM-DD without timezone issues
+export function formatYmd(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 // Helper to get all occurrences of a recurring transaction within a date range
 // If paydayDate is provided, excludes occurrences that fall on that specific date
 export function getOccurrencesInCycleRange(
