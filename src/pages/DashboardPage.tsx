@@ -73,23 +73,11 @@ export default function DashboardPage() {
     }
   };
 
-  if (authLoading || isLoading || !hasFetchedCycles || !currentCycle || !metrics) {
-    return (
-      <FinanceLayout>
-        <div className="px-5 py-6 space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-40 w-full rounded-2xl" />
-          <Skeleton className="h-24 w-full rounded-2xl" />
-        </div>
-      </FinanceLayout>
-    );
-  }
-
   const upcomingPlannedTransactions = useMemo(() => {
     const planned = transactions.filter((t) => t.is_planned);
     if (planned.length === 0) return [];
 
-    const todayYmd = formatInTimeZone(new Date(), TIMEZONE, 'yyyy-MM-dd');
+    const todayYmd = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
     const todayMs = ymdToUtcMs(todayYmd);
 
     const inNext7Days = planned.filter((t) => {
@@ -111,6 +99,18 @@ export default function DashboardPage() {
   }, [transactions]);
 
   const hasAnyTransactions = transactions.length > 0;
+
+  if (authLoading || isLoading || !hasFetchedCycles || !currentCycle || !metrics) {
+    return (
+      <FinanceLayout>
+        <div className="px-5 py-6 space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-40 w-full rounded-2xl" />
+          <Skeleton className="h-24 w-full rounded-2xl" />
+        </div>
+      </FinanceLayout>
+    );
+  }
 
   return (
     <FinanceLayout>
