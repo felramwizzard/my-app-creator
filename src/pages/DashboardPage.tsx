@@ -154,7 +154,7 @@ export default function DashboardPage() {
           <div className="text-xs text-muted-foreground space-y-1">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-3 h-3" />
-              <span>${metrics.remainingDiscretionary.toLocaleString()} left ÷ 4 weekends</span>
+              <span>${metrics.remainingDiscretionary.toLocaleString()} left ÷ {metrics.weekendsRemaining} weekend{metrics.weekendsRemaining !== 1 ? 's' : ''}</span>
             </div>
             {metrics.actualDiscretionarySpend > 0 && (
               <div className="flex items-center gap-2 text-destructive">

@@ -105,6 +105,7 @@ export interface CycleMetrics {
   remainingToSpend: number;
   safeToSpend: number;
   safeToSpendPerWeekend: number;
+  weekendsRemaining: number;
   daysRemaining: number;
   dailyBudget: number;
   budgetByCategory: BudgetCategoryMetric[];
