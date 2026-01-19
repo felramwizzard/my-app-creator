@@ -7,7 +7,8 @@ import { TransactionDetailSheet } from "@/components/finance/TransactionDetailSh
 import { CategoryBadge } from "@/components/finance/CategoryBadge";
 import { useFinance } from "@/hooks/useFinance";
 import { Search, X, Clock, ArrowUpDown, CalendarDays } from "lucide-react";
-import { format, parseISO, isAfter, isBefore, startOfDay } from "date-fns";
+import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import type { Category, Transaction } from "@/types/finance";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -21,6 +22,13 @@ import {
 
 type FilterType = 'all' | 'uncategorized' | 'planned' | Category['type'];
 type SortType = 'upcoming' | 'newest' | 'oldest' | 'amount-high' | 'amount-low';
+
+const TIMEZONE = 'Australia/Sydney';
+
+const ymdToLocalDate = (ymd: string) => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 
 export default function TransactionsPage() {
   const { transactions, categories, bulkUpdateTransactions, updateTransaction, deleteTransaction } = useFinance();
@@ -55,31 +63,29 @@ export default function TransactionsPage() {
     }
 
     // Sort
-    const today = startOfDay(new Date());
+    const todayYmd = formatInTimeZone(new Date(), TIMEZONE, 'yyyy-MM-dd');
     result = [...result].sort((a, b) => {
-      const dateA = parseISO(a.date);
-      const dateB = parseISO(b.date);
-      
+      const dateA = a.date;
+      const dateB = b.date;
+
       switch (sortBy) {
-        case 'upcoming':
+        case 'upcoming': {
           // Closest upcoming dates first, then past dates newest first
-          const aIsFuture = !isBefore(dateA, today);
-          const bIsFuture = !isBefore(dateB, today);
-          
+          const aIsFuture = dateA >= todayYmd;
+          const bIsFuture = dateB >= todayYmd;
+
           if (aIsFuture && bIsFuture) {
-            // Both future: closest first
-            return dateA.getTime() - dateB.getTime();
+            return dateA.localeCompare(dateB);
           } else if (!aIsFuture && !bIsFuture) {
-            // Both past: most recent first
-            return dateB.getTime() - dateA.getTime();
+            return dateB.localeCompare(dateA);
           } else {
-            // Future comes before past
             return aIsFuture ? -1 : 1;
           }
+        }
         case 'newest':
-          return dateB.getTime() - dateA.getTime();
+          return dateB.localeCompare(dateA);
         case 'oldest':
-          return dateA.getTime() - dateB.getTime();
+          return dateA.localeCompare(dateB);
         case 'amount-high':
           return Math.abs(b.amount) - Math.abs(a.amount);
         case 'amount-low':
@@ -105,19 +111,16 @@ export default function TransactionsPage() {
     });
 
     // Sort groups based on sortBy
-    const today = startOfDay(new Date());
+    const todayYmd = formatInTimeZone(new Date(), TIMEZONE, 'yyyy-MM-dd');
     return Object.entries(groups).sort(([a], [b]) => {
-      const dateA = parseISO(a);
-      const dateB = parseISO(b);
-      
       if (sortBy === 'upcoming') {
-        const aIsFuture = !isBefore(dateA, today);
-        const bIsFuture = !isBefore(dateB, today);
-        
+        const aIsFuture = a >= todayYmd;
+        const bIsFuture = b >= todayYmd;
+
         if (aIsFuture && bIsFuture) {
-          return dateA.getTime() - dateB.getTime();
+          return a.localeCompare(b);
         } else if (!aIsFuture && !bIsFuture) {
-          return dateB.getTime() - dateA.getTime();
+          return b.localeCompare(a);
         } else {
           return aIsFuture ? -1 : 1;
         }
@@ -290,7 +293,7 @@ export default function TransactionsPage() {
           {groupedTransactions.map(([date, txns]) => (
             <div key={date}>
               <p className="text-xs font-medium text-muted-foreground mb-2 sticky top-0 bg-background py-1">
-                {format(parseISO(date), 'EEEE, MMMM d')}
+                {format(ymdToLocalDate(date), 'EEEE, MMMM d')}
               </p>
               <div className="glass-card rounded-2xl divide-y divide-border/50 overflow-hidden">
                 {txns.map((t) => (
