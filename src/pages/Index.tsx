@@ -4,23 +4,26 @@ import { MobileLayout } from "@/components/layout/MobileLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProgressCard } from "@/components/home/ProgressCard";
 import { QuickActions } from "@/components/home/QuickActions";
-import { TaskItem } from "@/components/tasks/TaskItem";
 import { AddTaskSheet } from "@/components/tasks/AddTaskSheet";
 import { Button } from "@/components/ui/button";
 import { useTasks } from "@/hooks/useTasks";
 import { useFinance } from "@/hooks/useFinance";
 import { TransactionItem } from "@/components/finance/TransactionItem";
-import { addDays, startOfDay, differenceInDays } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { formatInTimeZone } from "date-fns-tz";
 
 const TIMEZONE = 'Australia/Sydney';
+
+const ymdToUtcMs = (ymd: string) => {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+};
 
 const Index = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const { tasks, addTask, toggleTask, toggleStar, deleteTask, completedCount, starredCount, totalCount } = useTasks();
   const { transactions } = useFinance();
 
-  const upcomingTasks = tasks.filter((t) => !t.completed).slice(0, 3);
+  
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -35,17 +38,13 @@ const Index = () => {
     const planned = transactions.filter((t) => t.is_planned);
     if (planned.length === 0) return [];
 
-    const nowSydney = toZonedTime(new Date(), TIMEZONE);
-    const todayUtcMs = Date.UTC(
-      nowSydney.getFullYear(),
-      nowSydney.getMonth(),
-      nowSydney.getDate()
-    );
+    // Compute "today" in the app's budgeting timezone (stable regardless of user's device timezone)
+    const todayYmd = formatInTimeZone(new Date(), TIMEZONE, "yyyy-MM-dd");
+    const todayMs = ymdToUtcMs(todayYmd);
 
     const inNext7Days = planned.filter((t) => {
-      const [year, month, day] = t.date.split("-").map(Number);
-      const txUtcMs = Date.UTC(year, month - 1, day);
-      const diffDays = Math.floor((txUtcMs - todayUtcMs) / 86400000);
+      const txMs = ymdToUtcMs(t.date);
+      const diffDays = Math.floor((txMs - todayMs) / 86400000);
       return diffDays >= 0 && diffDays < 7;
     });
 
