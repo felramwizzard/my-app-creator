@@ -21,7 +21,7 @@ import {
   Repeat,
   DollarSign
 } from "lucide-react";
-import { CategoryBadge } from "@/components/finance/CategoryBadge";
+import { CategoryManager } from "@/components/finance/CategoryManager";
 import {
   Dialog,
   DialogContent,
@@ -268,12 +268,8 @@ export default function SettingsPage() {
           <h2 className="font-semibold mb-3 flex items-center gap-2">
             <Tag className="w-4 h-4" /> Categories
           </h2>
-          <div className="glass-card rounded-xl p-4 space-y-2">
-            <div className="flex flex-wrap gap-2">
-              {categories.map(cat => (
-                <CategoryBadge key={cat.id} category={cat} />
-              ))}
-            </div>
+          <div className="glass-card rounded-xl p-4">
+            <CategoryManager mode="full" />
           </div>
         </section>
 
