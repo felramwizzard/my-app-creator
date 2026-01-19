@@ -214,7 +214,7 @@ export function useFinance() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('recurring_transactions')
-        .select('*')
+        .select('*, category:categories(*)')
         .eq('user_id', user!.id)
         .eq('is_active', true);
 
